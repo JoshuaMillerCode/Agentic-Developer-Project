@@ -46,10 +46,10 @@ This document is the master plan to execute the **AI Builder Candidate Project: 
 
 | # | Task | Details | Done |
 |---|------|---------|------|
-| 1.1 | **Choose public REST API** | Pick one with free keys: e.g. Weather (OpenWeather), Jokes (e.g. JokeAPI), Facts (e.g. Numbers API), or other public data API. Document choice in README. | ☐ |
-| 1.2 | **Obtain API key** | Register and get key; document where to get it and how to set it (e.g. `.env`). | ☐ |
-| 1.3 | **Define repo structure** | Create clearly separated folders: `frontend/`, `backend/` (or `agent/`), `mcp-server/`. Add `.gitignore` (env, keys, node_modules, venv, etc.). | ☐ |
-| 1.4 | **Dependency files** | Add `requirements.txt` (Python) and/or `package.json` (Node.js) with pinned versions for MCP server, backend, and frontend. | ☐ |
+| 1.1 | **Choose public REST API** | Pick one with free keys: e.g. Weather (OpenWeather), Jokes (e.g. JokeAPI), Facts (e.g. Numbers API), or other public data API. Document choice in README. | ☑ |
+| 1.2 | **Obtain API key** | Register and get key; document where to get it and how to set it (e.g. `.env`). | ☑ |
+| 1.3 | **Define repo structure** | Create clearly separated folders: `frontend/`, `backend/` (or `agent/`), `mcp-server/`. Add `.gitignore` (env, keys, node_modules, venv, etc.). | ☑ |
+| 1.4 | **Dependency files** | Add `requirements.txt` (Python) and/or `package.json` (Node.js) with pinned versions for MCP server, backend, and frontend. | ☑ |
 
 ---
 
@@ -57,10 +57,10 @@ This document is the master plan to execute the **AI Builder Candidate Project: 
 
 | # | Task | Details | Done |
 |---|------|---------|------|
-| 2.1 | **Implement MCP Server** | Microservice that wraps the chosen REST API. Expose core operations as MCP tools/resources (e.g. “get weather”, “get joke”, “get fact”). | ☐ |
-| 2.2 | **Tool/resource definitions** | Clear schema for each tool: name, description, parameters. Ensure the LLM can discover and call them. | ☐ |
-| 2.3 | **API key handling** | MCP server reads third-party API key from environment (or config); never hardcode. Document in README. | ☐ |
-| 2.4 | **Run instructions** | Document how to start the MCP server (port, env vars) so the agent backend can connect. | ☐ |
+| 2.1 | **Implement MCP Server** | Microservice that wraps the chosen REST API. Expose core operations as MCP tools/resources (e.g. “get weather”, “get joke”, “get fact”). | ☑ |
+| 2.2 | **Tool/resource definitions** | Clear schema for each tool: name, description, parameters. Ensure the LLM can discover and call them. | ☑ |
+| 2.3 | **API key handling** | MCP server reads third-party API key from environment (or config); never hardcode. Document in README. | ☑ |
+| 2.4 | **Run instructions** | Document how to start the MCP server (port, env vars) so the agent backend can connect. | ☑ |
 
 ---
 

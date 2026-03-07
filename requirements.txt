@@ -1,0 +1,3 @@
+# Agentic Developer Project — Python dependencies
+# (MCP server, LLM backend)
+# Add pinned versions as components are implemented.

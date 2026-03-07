@@ -34,16 +34,6 @@ Added a retroactive log entry for the earlier create-subagent (code reviewer) pr
 
 ---
 
-### 2025-03-06 – Best model for code reviews and add to code-reviewer agent
-
-**Prompt:**  
-what is the best model for code reviews, find it and add it to the @.cursor/agents/code-reviewer.md agent /prompt-response-logging
-
-**Summary:**  
-Researched best LLM for code review: Claude Sonnet 4 leads (SWE-Bench Verified 72.7%, 200K context, 64K output). Added `model: claude-sonnet-4` to code-reviewer frontmatter and a "Recommended model" note in the agent body so the code-reviewer subagent uses the best-performing model when invoked.
-
----
-
 ### 2025-03-06 – Recommend skills and subagents for Agentic Developer Project
 
 **Prompt:**  
@@ -51,5 +41,164 @@ what other skills or subagents do you recommend for this project? @/Users/joshua
 
 **Summary:**  
 Reviewed the project PDF and EXECUTION_PLAN; recommended skills/subagents mapped to evaluation criteria (Presentation & Documentation, Agentic Development, LLM & Tooling, Architecture). Created documentation-readme skill (README structure, env/keys, run order, docs philosophy for the brief) and debugger subagent (frontend/backend/MCP stack debugging). Suggested optional additions: deployment-narrative skill, API selector subagent.
+
+---
+
+### 2025-03-06 – Phase 1 foundation with TMDB API
+
+**Prompt:**  
+Let's get start on Phase 1 that is described in EXECUTION_PLAN.md. We are going to use the TMDB API. I have obtained an API key and you need to give me a clear place to put it in the env. Thoroughly search the documentation with Parallel deep research.
+
+**Summary:**  
+Implemented Phase 1 foundation: created repo structure (frontend/, backend/, mcp-server/), added .env.example with TMDB_API_KEY and clear instructions, .gitignore for secrets and dependencies, requirements.txt and frontend package.json stubs, and README with env setup. Researched TMDB docs: base URL, auth (api_key query param or Bearer token), main endpoints (search/movie, discover/movie, configuration), rate limiting. Added docs/TMDB_API_REFERENCE.md for Phase 2. Marked Phase 1 tasks complete in EXECUTION_PLAN.md.
+
+---
+
+### 2025-03-06 – Phase 2 MCP server (get started)
+
+**Prompt:**  
+/mcp-server-development get started with Phase 2
+
+**Summary:**  
+Implemented the TMDB MCP server: server.py with FastMCP, tools/tmdb_tools.py wrapping the API, requirements.txt (mcp, httpx), and mcp-server/README.md. Added 6 tools: search_movie, search_tv, get_movie_details, get_tv_details, get_trending_movies, get_trending_tv. API key from TMDB_API_KEY env; fail-fast if missing. Documented run instructions for stdio transport.
+
+---
+
+### 2025-03-06 – venv placement: root vs mcp-server
+
+**Prompt:**  
+should the venv be in the mcp server? or is at the root level fine?
+
+**Summary:**  
+Recommended keeping the venv at the project root so one environment serves mcp-server, backend (LangChain), and any other Python code. Root-level venv simplifies onboarding and CI; mcp-server-specific venv is better only for separate deployment or different Python versions.
+
+---
+
+### 2025-03-06 – MCP tools for all TMDB endpoints
+
+**Prompt:**  
+The mcp server needs to have tools for all the endpoints in the TMDB_API_REFERENCE.md
+
+**Summary:**  
+Added get_configuration (image URLs, languages, countries) and discover_movie (filters: sort_by, genre, year, vote_average) so all 8 endpoints in the reference now have MCP tools. Updated mcp-server/README.md tool table.
+
+---
+
+### 2025-03-06 – Code review of mcp-server
+
+**Prompt:**  
+/code-reviewer review the new mcp code in the mcp-server folder
+
+**Summary:**  
+Delegated to code-reviewer subagent. Review reported one critical (error responses using str(e) could leak API key), warnings (input validation, duplicated error handling, unpinned deps), and suggestions (relative import, rate limit note, Bearer auth). Presented structured review with Critical / Warnings / Suggestions / Security notes to the user.
+
+---
+
+### 2025-03-06 – Address code review and log prompts
+
+**Prompt:**  
+address this code review. after that log the last code review prompt and this one /prompt-response-logging
+
+**Summary:**  
+Fixed code review findings: safe error handling via _call() that never surfaces str(e), input validation (page 1–500, positive IDs, non-empty query, allowlisted sort_by), pinned requirements (mcp<2, httpx<0.28), try/except for relative vs absolute import in server.py, and rate limiting note in README. Appended log entries for the code-review prompt and this prompt to PROMPT_LOG.md.
+
+---
+
+### 2025-03-06 – Code review of post-fix MCP code
+
+**Prompt:**  
+/code-reviewer review the new code that addressed the last code review
+
+**Summary:**  
+Delegated to code-reviewer subagent. Follow-up review confirmed API key leakage fixed and no new critical issues. One warning: coerce page and IDs at boundary (MCP may pass strings) and return validation_error for type errors. Suggestions: validate optional discover_movie params (year, vote_average range), normalize sort_by with .strip().lower(), README note on optional param validation. Presented structured review to the user.
+
+---
+
+### 2025-03-06 – Address follow-up code review and log prompts
+
+**Prompt:**  
+address the code review, /prompt-response-logging dont forget to log the last prompt and this one
+
+**Summary:**  
+Addressed follow-up review: added _coerce_page() and _coerce_id() so page and movie_id/tv_id accept strings and return clear validation_error on type/range errors; normalized sort_by and time_window with .strip().lower(); validated optional discover_movie params (primary_release_year, year 1900–2100; vote_average_gte/lte 0–10) with coercion and clear errors. README note on optional param validation and with_genres pass-through. Logged the “review the new code that addressed the last code review” prompt and this prompt in PROMPT_LOG.md.
+
+---
+### 2025-03-06 – Create MCP server tests for all tools
+
+**Prompt:**  
+create tests for the mcp-server to make sure ALL the tools are running properly /prompt-response-logging
+
+**Summary:**  
+Added pytest test suite in mcp-server/tests/: conftest.py (loads .env from project root, adds integration marker), test_tools.py with 26 tests covering all 8 tools. Validation tests (13) run without TMDB_API_KEY; integration tests (13) require TMDB_API_KEY and assert real API response structure. Added requirements-dev.txt (pytest) and README "Tests" section. All 26 tests pass.
+
+---
+
+### 2025-03-06 – Code review of mcp-server tests
+
+**Prompt:**  
+/code-reviewer review the tests that were just written
+
+**Summary:**  
+Delegated to code-reviewer subagent. Review found no critical security issues; two critical fixes (conftest .env parsing with python-dotenv, test_invalid_page assert on detail); warnings (redundant sys.path, missing get_tv_details validation tests, integration tests depending on stable TMDB data, pytest pin); suggestions (fixture for integration calls, assert detail in validation tests, README run-from-root). Presented structured review to the user.
+
+---
+
+### 2025-03-06 – Address test code review and log prompts
+
+**Prompt:**  
+address the code review and make necessary changes. after log this and the last prompt /prompt-response-logging
+
+**Summary:**  
+Addressed test code review: conftest uses python-dotenv with fallback to manual .env parse, removed redundant project-root sys.path; test_invalid_page_returns_validation_error now asserts detail mentions page/500; added get_tv_details(-1) and get_tv_details("not_an_id") validation tests; integration tests assert isinstance(title/name, str) instead of exact titles; added detail assertions for trending and vote_average validation tests; requirements-dev pins pytest>=7.4,<8 and adds python-dotenv; README adds run-from-root one-liner and note on integration test stability. Logged the code-review prompt and this prompt in PROMPT_LOG.md. All 28 tests pass.
+
+---
+
+### 2025-03-06 – Final production-readiness review of MCP and tests
+
+**Prompt:**  
+/code-reviewer do one more review of the mcp and tests and let me know if its is good and safe to use in production /prompt-response-logging
+
+**Summary:**  
+Delegated to code-reviewer for production and safety review. Verdict: ready for production with caveats. No blocking issues; API key from env only, no leakage in responses or logs, validation and error handling in place. Recommended before production: pin exact dependency versions, handle 429 as rate_limit_exceeded, optional query length cap, test error-response shape, README production/deployment note. Optional: validate with_genres/language, test for missing key, document no request/response logging. Security summary: all areas OK (key handling, leakage, input validation, injection, dependencies). Logged this prompt in PROMPT_LOG.md.
+
+---
+
+### 2025-03-06 – Address production review: recommended and optional fixes
+
+**Prompt:**  
+fix these issue that are outlined in the review. address the "Recommended before production" and the "Optional improvements" sections in full /prompt-response-logging
+
+**Summary:**  
+Implemented all recommended and optional items from the production review. Recommended: 429 returns rate_limit_exceeded with detail; query length cap (500 chars) in search_movie/search_tv; TestErrorResponseShape (missing key returns safe error, validation_error shape); README Production/deployment section (key, throttling, pins, logging, timeout); requirements.txt comment for production pinning. Optional: with_genres validated as comma-separated digits; language length cap (10 chars); vote_average_gte <= vote_average_lte check; HTTP_TIMEOUT_SECONDS constant (30) documented in README; server docstring and README state no request/response logging; conftest comment on .env fallback and inline comments; tests for query too long, vote gte>lte, invalid with_genres, missing API key, and error response shape. Logged this prompt in PROMPT_LOG.md.
+
+---
+
+### 2025-03-06 – Improve mcp-server README documentation
+
+**Prompt:**  
+/documentation-writer improve the documentation of the mcp-server READ.md
+
+**Summary:**  
+Delegated to documentation-writer subagent. README was restructured with an overview, quick start, clearer setup (Python/deps and API key options A/B), how to run (run order, stdio and HTTP), code structure table (server.py, tools/, tests/), and dependencies section. Preserved all technical content (rate limiting, production, tests, tools); added cross-references and aligned with documentation-readme skill for single entry point and onboarding.
+
+---
+
+### 2025-03-06 – Log the last 2 prompts
+
+**Prompt:**  
+/prompt-response-logging  log the last 2 prompts
+
+**Summary:**  
+Appended two entries to PROMPT_LOG.md: (1) documentation-writer improvement of mcp-server README, (2) this prompt.
+
+---
+
+### 2025-03-06 – Create agent memory file for session handoff
+
+**Prompt:**  
+finally create an agent memory file to compact the context of this session so I can start a new session with no memory loss /prompt-response-logging
+
+**Summary:**  
+Created `.cursor/PROJECT_MEMORY.md` as a compact agent memory file: project name and goal, phase status (1–2 done, 3–6 pending), TMDB API and env, repo layout and venv/env decisions, MCP server summary (8 tools, security, run, tests), key decisions, and “Key files to read” plus “Next session: start here” (Phase 3 LangChain backend). Logged this prompt in PROMPT_LOG.md.
 
 ---

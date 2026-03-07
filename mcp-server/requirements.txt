@@ -1,0 +1,4 @@
+# MCP server dependencies. Ranges allow flexible installs.
+# For production: pin exact versions (e.g. pip freeze | grep -E '^mcp |^httpx ') and document in README.
+mcp>=1.0.0,<2
+httpx>=0.27.0,<0.28

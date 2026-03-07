@@ -1,0 +1,4 @@
+# Dev dependencies for mcp-server tests
+-r requirements.txt
+pytest>=7.4,<8
+python-dotenv>=1.0.0,<2
