@@ -1,3 +1,3 @@
 # Agentic Developer Project — Python dependencies
-# (MCP server, LLM backend)
-# Add pinned versions as components are implemented.
+# (MCP server: mcp-server/requirements.txt | LLM backend: backend/requirements.txt)
+# From project root: pip install -r mcp-server/requirements.txt && pip install -r backend/requirements.txt

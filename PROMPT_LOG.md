@@ -202,3 +202,23 @@ finally create an agent memory file to compact the context of this session so I 
 Created `.cursor/PROJECT_MEMORY.md` as a compact agent memory file: project name and goal, phase status (1–2 done, 3–6 pending), TMDB API and env, repo layout and venv/env decisions, MCP server summary (8 tools, security, run, tests), key decisions, and “Key files to read” plus “Next session: start here” (Phase 3 LangChain backend). Logged this prompt in PROMPT_LOG.md.
 
 ---
+
+### 2025-03-07 – Implement Phase 3 LLM Agent Backend
+
+**Prompt:**  
+Analyse the codebase, the mcp-server, and the .cursor/PROJECT_MEMORY.md. I am ready to start implementing Phase 3 in the EXECUTION_PLAN.md.
+
+**Summary:**  
+Implemented Phase 3 end-to-end: added backend with FastAPI, LangGraph create_react_agent, and langchain-mcp-adapters for stdio connection to the TMDB MCP server. Backend spawns MCP as subprocess (cwd=project root, env passed), loads all 8 MCP tools via load_mcp_tools(session), and exposes GET /health and POST /chat (body {"message": "..."} -> {"response": "..."}). System prompt guides tool use for movie/TV search, trending, discover, and details. LLM key from env (OPENAI_API_KEY or ANTHROPIC_API_KEY). Updated .env.example, backend/README.md, EXECUTION_PLAN.md (Phase 3 tasks marked done), and .cursor/PROJECT_MEMORY.md. Phase 4 (frontend) is next.
+
+---
+
+### 2025-03-08 – Add TMDB tools for all route categories
+
+**Prompt:**  
+I want to add more tools to the MCP server. I want tools for all of the route categories that are outlined in the documentation https://developer.themoviedb.org/reference/ Movie Lists, trending, tv series, tv seasons, tv episodes, tv series lists, search, people, movies. cross reference what you already have in the mcp and add the ones that are missing. /prompt-response-logging
+
+**Summary:**  
+Cross-referenced the TMDB API reference with the existing 8 MCP tools and added 22 new tools. Implemented: Movie Lists (get_movie_now_playing, get_movie_popular, get_movie_top_rated, get_movie_upcoming); Trending (get_trending_all, get_trending_people); TV Series Lists (get_tv_airing_today, get_tv_on_the_air, get_tv_popular, get_tv_top_rated); TV Seasons (get_tv_season_details) and TV Episodes (get_tv_episode_details); get_tv_credits; Search (search_person, search_multi); People (get_person_details, get_person_movie_credits, get_person_tv_credits); Movies (get_movie_credits). All tools live in mcp-server/tools/tmdb_tools.py with validation and error handling; server.py registers all 30 tools. Updated mcp-server/README.md with full tools table, added validation tests for new tools, and appended this entry to PROMPT_LOG.md.
+
+---

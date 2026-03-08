@@ -68,12 +68,12 @@ This document is the master plan to execute the **AI Builder Candidate Project: 
 
 | # | Task | Details | Done |
 |---|------|---------|------|
-| 3.1 | **Choose framework** | LangChain (or equivalent) with support for tool/function calling. Set up project and dependencies. | ☐ |
-| 3.2 | **Connect to MCP Server** | Agent backend connects to the MCP Server (e.g. stdio or HTTP transport) and discovers tools. | ☐ |
-| 3.3 | **Define tools in agent** | Map MCP tools to LangChain tools/functions so the LLM can invoke them (correct names, descriptions, parameters). | ☐ |
-| 3.4 | **Prompt design** | System/user prompts that make the agent contextually use the right tool (e.g. “answer using weather when relevant”). | ☐ |
-| 3.5 | **LLM API key** | Use env/config for LLM provider key (e.g. OpenAI, Anthropic). Document in README. | ☐ |
-| 3.6 | **API for frontend** | Expose an HTTP API (e.g. `/chat` or `/query`) that the frontend calls; backend runs the agent and returns responses. | ☐ |
+| 3.1 | **Choose framework** | LangChain (or equivalent) with support for tool/function calling. Set up project and dependencies. | ☑ |
+| 3.2 | **Connect to MCP Server** | Agent backend connects to the MCP Server (e.g. stdio or HTTP transport) and discovers tools. | ☑ |
+| 3.3 | **Define tools in agent** | Map MCP tools to LangChain tools/functions so the LLM can invoke them (correct names, descriptions, parameters). | ☑ |
+| 3.4 | **Prompt design** | System/user prompts that make the agent contextually use the right tool (e.g. “answer using weather when relevant”). | ☑ |
+| 3.5 | **LLM API key** | Use env/config for LLM provider key (e.g. OpenAI, Anthropic). Document in README. | ☑ |
+| 3.6 | **API for frontend** | Expose an HTTP API (e.g. `/chat` or `/query`) that the frontend calls; backend runs the agent and returns responses. | ☑ |
 
 ---
 

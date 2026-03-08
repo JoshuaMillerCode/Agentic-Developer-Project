@@ -6,7 +6,7 @@ MCP (Model Context Protocol) server for the **Agentic Developer Project**. It wr
 
 - **Purpose:** Expose TMDB as MCP tools so an LLM agent can search movies/TV, get details, and discover or trend content.
 - **Transport:** stdio by default (for LangChain/MCP client integration); optional HTTP for tools like MCP Inspector.
-- **Tools:** 8 tools — configuration, search (movie/TV), discover movies, details (movie/TV), trending (movie/TV). See [Tools](#tools) below.
+- **Tools:** 30 tools — configuration; search (movie, TV, person, multi); discover movies; movie lists (now playing, popular, top rated, upcoming); movie details & credits; TV details & credits; TV series lists (airing today, on the air, popular, top rated); TV season & episode details; trending (all, movies, TV, people); people details & credits. See [Tools](#tools) below.
 
 ## Quick start
 
@@ -77,7 +77,7 @@ Connect to `http://localhost:8000/mcp`.
 
 | Path | Purpose |
 |------|--------|
-| `server.py` | Entry point; defines the FastMCP app and registers all 8 tools. Run this to start the server. |
+| `server.py` | Entry point; defines the FastMCP app and registers all 30 tools. Run this to start the server. |
 | `tools/` | TMDB API wrapper. `tmdb_tools.py` implements the logic for each tool (HTTP calls, validation, error handling). |
 | `tests/` | Pytest suite: validation tests (no API key) and integration tests (real API, require `TMDB_API_KEY`). See [Tests](#tests). |
 
@@ -110,7 +110,7 @@ Parameter notes: optional `discover_movie` parameters (e.g. `year`, `vote_averag
 
 ## Tests
 
-Tests cover all 8 tools: **validation** (no API key) and **integration** (requires `TMDB_API_KEY` in environment). Integration tests assume TMDB data for the used IDs (e.g. 603, 1396) remains available; they assert response structure and types, not exact titles.
+Tests cover all 30 tools: **validation** (no API key) and **integration** (requires `TMDB_API_KEY` in environment). Integration tests assume TMDB data for the used IDs (e.g. 603, 1396) remains available; they assert response structure and types, not exact titles.
 
 From project root:
 
@@ -138,11 +138,39 @@ Validation only:
 
 | Tool | Description |
 |------|-------------|
+| **Configuration** | |
 | `get_configuration` | API configuration (image URLs, languages, countries) |
+| **Search** | |
 | `search_movie` | Search movies by title |
 | `search_tv` | Search TV shows by title |
+| `search_person` | Search people (actors, crew) by name |
+| `search_multi` | Search across movies, TV, and people in one request |
+| **Discover** | |
 | `discover_movie` | Discover movies with filters (genre, year, rating, sort) |
+| **Movie Lists** | |
+| `get_movie_now_playing` | Movies currently in theatres |
+| `get_movie_popular` | Popular movies |
+| `get_movie_top_rated` | Top rated movies |
+| `get_movie_upcoming` | Upcoming movie releases |
+| **Movies** | |
 | `get_movie_details` | Movie details by TMDB ID |
+| `get_movie_credits` | Cast and crew for a movie |
+| **TV Series** | |
 | `get_tv_details` | TV show details by TMDB ID |
+| `get_tv_credits` | Cast and crew for a TV show |
+| `get_tv_season_details` | TV season details (by show ID and season number) |
+| `get_tv_episode_details` | TV episode details (by show ID, season, episode) |
+| **TV Series Lists** | |
+| `get_tv_airing_today` | TV shows airing today |
+| `get_tv_on_the_air` | TV shows currently on the air |
+| `get_tv_popular` | Popular TV shows |
+| `get_tv_top_rated` | Top rated TV shows |
+| **Trending** | |
+| `get_trending_all` | All trending (movies, TV, people) |
 | `get_trending_movies` | Trending movies (day/week) |
 | `get_trending_tv` | Trending TV (day/week) |
+| `get_trending_people` | Trending people (day/week) |
+| **People** | |
+| `get_person_details` | Person details by TMDB ID |
+| `get_person_movie_credits` | Movie credits for a person |
+| `get_person_tv_credits` | TV credits for a person |

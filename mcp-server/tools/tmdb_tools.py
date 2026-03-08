@@ -1,6 +1,10 @@
 """
 TMDB API tools for the MCP server.
 Exposes core movie/TV operations as callable tools.
+
+List endpoints (movie/TV now_playing, popular, top_rated, upcoming, airing_today, etc.)
+accept page and language. Search endpoints support optional language (query and page
+are always validated).
 """
 
 import json
@@ -93,12 +97,32 @@ def _coerce_id(value: object, name: str) -> tuple[int | None, str | None]:
     return (v, None) if err is None else (None, err)
 
 
+def _validate_language(language: str) -> str | None:
+    """Return None if valid, else error detail. language is trimmed."""
+    lang = (language or "en-US").strip()
+    if len(lang) > MAX_LANGUAGE_LENGTH:
+        return f"language must be at most {MAX_LANGUAGE_LENGTH} characters"
+    return None
+
+
+def _call_list(path: str, page: object = 1, language: str = "en-US") -> str:
+    """Call a list endpoint with page and language. Validates both; returns JSON error string on failure."""
+    p, err = _coerce_page(page)
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    lang = (language or "en-US").strip()
+    err = _validate_language(lang)
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    return _call(path, {"page": p, "language": lang})
+
+
 def get_configuration() -> str:
     """Get API configuration: image base URLs, languages, countries, timezones."""
     return _call("/configuration")
 
 
-def search_movie(query: str, page: int = 1) -> str:
+def search_movie(query: str, page: int = 1, language: str = "en-US") -> str:
     """Search for movies by title."""
     query = (query or "").strip()
     if not query:
@@ -108,7 +132,10 @@ def search_movie(query: str, page: int = 1) -> str:
     p, err = _coerce_page(page)
     if err:
         return json.dumps({"error": "validation_error", "detail": err})
-    return _call("/search/movie", {"query": query, "page": p})
+    lang = (language or "en-US").strip()
+    if len(lang) > MAX_LANGUAGE_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"language must be at most {MAX_LANGUAGE_LENGTH} characters"})
+    return _call("/search/movie", {"query": query, "page": p, "language": lang})
 
 
 def discover_movie(
@@ -188,7 +215,7 @@ def discover_movie(
     return _call("/discover/movie", params)
 
 
-def search_tv(query: str, page: int = 1) -> str:
+def search_tv(query: str, page: int = 1, language: str = "en-US") -> str:
     """Search for TV shows by title."""
     query = (query or "").strip()
     if not query:
@@ -198,7 +225,10 @@ def search_tv(query: str, page: int = 1) -> str:
     p, err = _coerce_page(page)
     if err:
         return json.dumps({"error": "validation_error", "detail": err})
-    return _call("/search/tv", {"query": query, "page": p})
+    lang = (language or "en-US").strip()
+    if len(lang) > MAX_LANGUAGE_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"language must be at most {MAX_LANGUAGE_LENGTH} characters"})
+    return _call("/search/tv", {"query": query, "page": p, "language": lang})
 
 
 def get_movie_details(movie_id: int) -> str:
@@ -231,3 +261,208 @@ def get_trending_tv(time_window: str = "day") -> str:
     if time_window not in ("day", "week"):
         return json.dumps({"error": "validation_error", "detail": "Use 'day' or 'week'"})
     return _call(f"/trending/tv/{time_window}")
+
+
+# ---------------------------------------------------------------------------
+# Movie Lists (MOVIE LISTS)
+# ---------------------------------------------------------------------------
+
+
+def get_movie_now_playing(page: int = 1, language: str = "en-US") -> str:
+    """Get list of movies currently in theatres."""
+    return _call_list("/movie/now_playing", page, language)
+
+
+def get_movie_popular(page: int = 1, language: str = "en-US") -> str:
+    """Get list of popular movies."""
+    return _call_list("/movie/popular", page, language)
+
+
+def get_movie_top_rated(page: int = 1, language: str = "en-US") -> str:
+    """Get list of top rated movies."""
+    return _call_list("/movie/top_rated", page, language)
+
+
+def get_movie_upcoming(page: int = 1, language: str = "en-US") -> str:
+    """Get list of upcoming movies."""
+    return _call_list("/movie/upcoming", page, language)
+
+
+# ---------------------------------------------------------------------------
+# Trending (additional)
+# ---------------------------------------------------------------------------
+
+
+def get_trending_all(time_window: str = "day") -> str:
+    """Get trending movies, TV shows, and people combined (time_window: 'day' or 'week')."""
+    time_window = (time_window or "day").strip().lower()
+    if time_window not in ("day", "week"):
+        return json.dumps({"error": "validation_error", "detail": "Use 'day' or 'week'"})
+    return _call(f"/trending/all/{time_window}")
+
+
+def get_trending_people(time_window: str = "day") -> str:
+    """Get trending people (time_window: 'day' or 'week')."""
+    time_window = (time_window or "day").strip().lower()
+    if time_window not in ("day", "week"):
+        return json.dumps({"error": "validation_error", "detail": "Use 'day' or 'week'"})
+    return _call(f"/trending/person/{time_window}")
+
+
+# ---------------------------------------------------------------------------
+# TV Series Lists (TV SERIES LISTS)
+# ---------------------------------------------------------------------------
+
+
+def get_tv_airing_today(page: int = 1, language: str = "en-US") -> str:
+    """Get list of TV shows airing today."""
+    return _call_list("/tv/airing_today", page, language)
+
+
+def get_tv_on_the_air(page: int = 1, language: str = "en-US") -> str:
+    """Get list of TV shows currently on the air."""
+    return _call_list("/tv/on_the_air", page, language)
+
+
+def get_tv_popular(page: int = 1, language: str = "en-US") -> str:
+    """Get list of popular TV shows."""
+    return _call_list("/tv/popular", page, language)
+
+
+def get_tv_top_rated(page: int = 1, language: str = "en-US") -> str:
+    """Get list of top rated TV shows."""
+    return _call_list("/tv/top_rated", page, language)
+
+
+# ---------------------------------------------------------------------------
+# TV Seasons & Episodes
+# ---------------------------------------------------------------------------
+
+
+def _coerce_season_episode(value: object, name: str) -> tuple[int | None, str | None]:
+    """Coerce season or episode number to int; allow 0 for specials."""
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        return None, f"{name} must be an integer"
+    if v < 0:
+        return None, f"{name} must be >= 0"
+    return v, None
+
+
+def get_tv_season_details(tv_id: int, season_number: int, language: str = "en-US") -> str:
+    """Get details for a TV season by show ID and season number (0 for specials)."""
+    tid, err = _coerce_id(tv_id, "tv_id")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    sn, err = _coerce_season_episode(season_number, "season_number")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    lang = (language or "en-US").strip()
+    if len(lang) > MAX_LANGUAGE_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"language must be at most {MAX_LANGUAGE_LENGTH} characters"})
+    return _call(f"/tv/{tid}/season/{sn}", {"language": lang})
+
+
+def get_tv_episode_details(tv_id: int, season_number: int, episode_number: int, language: str = "en-US") -> str:
+    """Get details for a TV episode by show ID, season number, and episode number."""
+    tid, err = _coerce_id(tv_id, "tv_id")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    sn, err = _coerce_season_episode(season_number, "season_number")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    en, err = _coerce_season_episode(episode_number, "episode_number")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    lang = (language or "en-US").strip()
+    if len(lang) > MAX_LANGUAGE_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"language must be at most {MAX_LANGUAGE_LENGTH} characters"})
+    return _call(f"/tv/{tid}/season/{sn}/episode/{en}", {"language": lang})
+
+
+def get_tv_credits(tv_id: int) -> str:
+    """Get cast and crew for a TV show by TMDB ID."""
+    tid, err = _coerce_id(tv_id, "tv_id")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    return _call(f"/tv/{tid}/credits")
+
+
+# ---------------------------------------------------------------------------
+# Search (additional)
+# ---------------------------------------------------------------------------
+
+
+def search_person(query: str, page: int = 1, language: str = "en-US") -> str:
+    """Search for people (actors, crew) by name."""
+    query = (query or "").strip()
+    if not query:
+        return json.dumps({"error": "validation_error", "detail": "query must be non-empty"})
+    if len(query) > MAX_QUERY_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"query must be at most {MAX_QUERY_LENGTH} characters"})
+    p, err = _coerce_page(page)
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    lang = (language or "en-US").strip()
+    if len(lang) > MAX_LANGUAGE_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"language must be at most {MAX_LANGUAGE_LENGTH} characters"})
+    return _call("/search/person", {"query": query, "page": p, "language": lang})
+
+
+def search_multi(query: str, page: int = 1, language: str = "en-US") -> str:
+    """Search across movies, TV shows, and people in a single request."""
+    query = (query or "").strip()
+    if not query:
+        return json.dumps({"error": "validation_error", "detail": "query must be non-empty"})
+    if len(query) > MAX_QUERY_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"query must be at most {MAX_QUERY_LENGTH} characters"})
+    p, err = _coerce_page(page)
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    lang = (language or "en-US").strip()
+    if len(lang) > MAX_LANGUAGE_LENGTH:
+        return json.dumps({"error": "validation_error", "detail": f"language must be at most {MAX_LANGUAGE_LENGTH} characters"})
+    return _call("/search/multi", {"query": query, "page": p, "language": lang})
+
+
+# ---------------------------------------------------------------------------
+# People
+# ---------------------------------------------------------------------------
+
+
+def get_person_details(person_id: int) -> str:
+    """Get details for a person (actor, crew) by TMDB ID."""
+    pid, err = _coerce_id(person_id, "person_id")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    return _call(f"/person/{pid}")
+
+
+def get_person_movie_credits(person_id: int) -> str:
+    """Get movie credits for a person by TMDB ID (cast and crew)."""
+    pid, err = _coerce_id(person_id, "person_id")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    return _call(f"/person/{pid}/movie_credits")
+
+
+def get_person_tv_credits(person_id: int) -> str:
+    """Get TV credits for a person by TMDB ID (cast and crew)."""
+    pid, err = _coerce_id(person_id, "person_id")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    return _call(f"/person/{pid}/tv_credits")
+
+
+# ---------------------------------------------------------------------------
+# Movies (additional sub-resources)
+# ---------------------------------------------------------------------------
+
+
+def get_movie_credits(movie_id: int) -> str:
+    """Get cast and crew for a movie by TMDB ID."""
+    mid, err = _coerce_id(movie_id, "movie_id")
+    if err:
+        return json.dumps({"error": "validation_error", "detail": err})
+    return _call(f"/movie/{mid}/credits")

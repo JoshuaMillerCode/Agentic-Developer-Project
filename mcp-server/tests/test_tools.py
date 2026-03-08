@@ -151,6 +151,161 @@ class TestTrendingValidation:
         assert data.get("error") == "validation_error"
         assert "day" in data.get("detail", "").lower() or "week" in data.get("detail", "").lower()
 
+    def test_invalid_time_window_trending_all_returns_validation_error(self):
+        raw = tmdb_tools.get_trending_all("month")
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_invalid_time_window_trending_people_returns_validation_error(self):
+        raw = tmdb_tools.get_trending_people("year")
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+
+class TestMovieListValidation:
+    def test_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_movie_popular(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "page" in data.get("detail", "").lower()
+
+    def test_tv_list_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_popular(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "page" in data.get("detail", "").lower()
+
+    def test_movie_now_playing_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_movie_now_playing(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_movie_top_rated_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_movie_top_rated(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_movie_upcoming_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_movie_upcoming(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_tv_airing_today_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_airing_today(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_tv_on_the_air_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_on_the_air(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_tv_top_rated_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_top_rated(page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+
+class TestTvSeasonEpisodeValidation:
+    def test_invalid_tv_id_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_season_details(0, 1)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_negative_season_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_season_details(1396, -1)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "season" in data.get("detail", "").lower()
+
+    def test_non_integer_season_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_season_details(1396, "one")
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "integer" in data.get("detail", "").lower()
+
+    def test_invalid_episode_number_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_episode_details(1396, 1, -1)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "episode" in data.get("detail", "").lower()
+
+    def test_non_integer_episode_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_episode_details(1396, 1, "five")
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "integer" in data.get("detail", "").lower()
+
+
+class TestSearchPersonValidation:
+    def test_empty_query_returns_validation_error(self):
+        raw = tmdb_tools.search_person("")
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "non-empty" in data.get("detail", "").lower()
+
+    def test_query_too_long_returns_validation_error(self):
+        raw = tmdb_tools.search_person("x" * 501)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "500" in data.get("detail", "") or "character" in data.get("detail", "").lower()
+
+    def test_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.search_person("Hanks", page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "page" in data.get("detail", "").lower()
+
+
+class TestSearchMultiValidation:
+    def test_empty_query_returns_validation_error(self):
+        raw = tmdb_tools.search_multi("")
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_query_too_long_returns_validation_error(self):
+        raw = tmdb_tools.search_multi("x" * 501)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "500" in data.get("detail", "") or "character" in data.get("detail", "").lower()
+
+    def test_invalid_page_returns_validation_error(self):
+        raw = tmdb_tools.search_multi("Matrix", page=0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "page" in data.get("detail", "").lower()
+
+
+class TestPersonValidation:
+    def test_negative_person_id_returns_validation_error(self):
+        raw = tmdb_tools.get_person_details(-1)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_person_movie_credits_invalid_id_returns_validation_error(self):
+        raw = tmdb_tools.get_person_movie_credits(-1)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "person" in data.get("detail", "").lower() or "integer" in data.get("detail", "").lower()
+
+    def test_person_tv_credits_invalid_id_returns_validation_error(self):
+        raw = tmdb_tools.get_person_tv_credits("not_an_id")
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+        assert "integer" in data.get("detail", "").lower()
+
+
+class TestCreditsValidation:
+    def test_tv_credits_invalid_id_returns_validation_error(self):
+        raw = tmdb_tools.get_tv_credits(0)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
+    def test_movie_credits_invalid_id_returns_validation_error(self):
+        raw = tmdb_tools.get_movie_credits(-1)
+        data = _parse(raw)
+        assert data.get("error") == "validation_error"
+
 
 # ---------------------------------------------------------------------------
 # Error response shape (no API key needed for request_failed path)
@@ -298,3 +453,171 @@ class TestGetTrendingTvIntegration:
         raw = tmdb_tools.get_trending_tv("week")
         data = _parse(raw)
         assert _is_success(data)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestMovieListIntegration:
+    """Movie list endpoints return paginated results. IDs and titles may vary."""
+
+    def test_now_playing_returns_results(self):
+        raw = tmdb_tools.get_movie_now_playing(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+        assert isinstance(data["results"], list)
+
+    def test_popular_returns_results(self):
+        raw = tmdb_tools.get_movie_popular(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+    def test_top_rated_returns_results(self):
+        raw = tmdb_tools.get_movie_top_rated(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+    def test_upcoming_returns_results(self):
+        raw = tmdb_tools.get_movie_upcoming(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestTrendingAllAndPeopleIntegration:
+    def test_trending_all_returns_results(self):
+        raw = tmdb_tools.get_trending_all("day")
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+    def test_trending_people_returns_results(self):
+        raw = tmdb_tools.get_trending_people("day")
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestTvListIntegration:
+    def test_airing_today_returns_results(self):
+        raw = tmdb_tools.get_tv_airing_today(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+    def test_on_the_air_returns_results(self):
+        raw = tmdb_tools.get_tv_on_the_air(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+    def test_tv_popular_returns_results(self):
+        raw = tmdb_tools.get_tv_popular(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+    def test_tv_top_rated_returns_results(self):
+        raw = tmdb_tools.get_tv_top_rated(page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestTvSeasonEpisodeIntegration:
+    """Uses show ID 1396 (Breaking Bad). Season/episode structure may vary."""
+
+    def test_season_details_returns_episodes(self):
+        raw = tmdb_tools.get_tv_season_details(1396, 1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "episodes" in data
+        assert isinstance(data["episodes"], list)
+
+    def test_episode_details_returns_name(self):
+        raw = tmdb_tools.get_tv_episode_details(1396, 1, 1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "name" in data
+        assert isinstance(data.get("name"), str)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestCreditsIntegration:
+    """Uses movie ID 603 (The Matrix) and TV ID 1396 (Breaking Bad)."""
+
+    def test_movie_credits_returns_cast_crew(self):
+        raw = tmdb_tools.get_movie_credits(603)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "cast" in data
+        assert "crew" in data
+        assert isinstance(data["cast"], list)
+        assert isinstance(data["crew"], list)
+
+    def test_tv_credits_returns_cast_crew(self):
+        raw = tmdb_tools.get_tv_credits(1396)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "cast" in data
+        assert "crew" in data
+        assert isinstance(data["cast"], list)
+        assert isinstance(data["crew"], list)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestSearchPersonIntegration:
+    def test_returns_results_structure(self):
+        raw = tmdb_tools.search_person("Hanks", page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+        assert isinstance(data["results"], list)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestSearchMultiIntegration:
+    def test_returns_results_structure(self):
+        raw = tmdb_tools.search_multi("Matrix", page=1)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "results" in data
+        assert isinstance(data["results"], list)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not _has_api_key(), reason="TMDB_API_KEY not set")
+class TestPersonIntegration:
+    """Uses person ID 287 (Brad Pitt). Response structure may vary."""
+
+    def test_person_details_returns_name(self):
+        raw = tmdb_tools.get_person_details(287)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "name" in data
+        assert isinstance(data["name"], str)
+
+    def test_person_movie_credits_returns_cast_crew(self):
+        raw = tmdb_tools.get_person_movie_credits(287)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "cast" in data
+        assert isinstance(data["cast"], list)
+
+    def test_person_tv_credits_returns_cast(self):
+        raw = tmdb_tools.get_person_tv_credits(287)
+        data = _parse(raw)
+        assert _is_success(data)
+        assert "cast" in data
+        assert isinstance(data["cast"], list)
