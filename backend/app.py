@@ -1,19 +1,21 @@
 """
 LLM Agent Backend — Phase 3.
 Connects to the TMDB MCP Server, builds a ReAct agent with MCP tools,
-and exposes /chat for the frontend.
+and exposes /chat (with structured cards), discovery, and config for the frontend.
 """
 
+import json
 import logging
 import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any, Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
@@ -22,6 +24,9 @@ from anthropic import AuthenticationError as AnthropicAuthenticationError
 
 from langchain_mcp_adapters.sessions import StdioConnection, create_session
 from langchain_mcp_adapters.tools import load_mcp_tools
+
+from backend import tmdb_client
+from backend.tmdb_client import TmdbClientError
 
 # Load .env from project root (parent of backend/)
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -46,18 +51,228 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "4096"))  # Messages API requir
 MCP_SERVER_SCRIPT_ENV = os.getenv("MCP_SERVER_SCRIPT", "").strip()
 MAX_MESSAGE_LENGTH = int(os.getenv("MAX_MESSAGE_LENGTH", "32000"))
 
+# Discovery/configuration validation — align with MCP server (tmdb_tools).
+DISCOVERY_MAX_PAGE = 500
+DISCOVERY_MAX_LANGUAGE_LENGTH = 10
+DISCOVERY_TIME_WINDOWS = ("day", "week")
+
 # Anthropic model IDs: https://docs.anthropic.com/en/docs/about-claude/models and model-deprecations.
 # Valid: claude-sonnet-4-6, claude-sonnet-4-5, claude-opus-4-6, claude-haiku-4-5, etc. Claude 3.5 Sonnet retired 2025-10-28.
 ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-6"
+
+
+def _validate_discovery_params(page: int, language: str) -> None:
+    """Raise HTTPException(400) if page or language invalid. Call at start of discovery routes."""
+    if page < 1 or page > DISCOVERY_MAX_PAGE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"page must be between 1 and {DISCOVERY_MAX_PAGE}",
+        )
+    lang = (language or "").strip()
+    if len(lang) > DISCOVERY_MAX_LANGUAGE_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"language must be at most {DISCOVERY_MAX_LANGUAGE_LENGTH} characters",
+        )
 
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=32_000, description="User message (max 32000 chars)")
 
 
+# Card models for chat and discovery — frontend renders these as movie/TV/person cards.
+class MovieCard(BaseModel):
+    type: Literal["movie"] = "movie"
+    id: int
+    title: str | None = None
+    poster_path: str | None = None
+    release_date: str | None = None
+    vote_average: float | None = None
+    overview: str | None = None
+
+
+class TVCard(BaseModel):
+    type: Literal["tv"] = "tv"
+    id: int
+    name: str | None = None
+    poster_path: str | None = None
+    first_air_date: str | None = None
+    vote_average: float | None = None
+    overview: str | None = None
+
+
+class PersonCard(BaseModel):
+    type: Literal["person"] = "person"
+    id: int
+    name: str | None = None
+    profile_path: str | None = None
+    known_for_department: str | None = None
+    known_for: list[str] = Field(default_factory=list)
+    biography: str | None = None
+
+
+Card = MovieCard | TVCard | PersonCard
+
+
+def _item_to_movie_card(item: dict[str, Any]) -> MovieCard:
+    """Build MovieCard from TMDb item. Callers must pass items with 'id' set."""
+    return MovieCard(
+        id=item.get("id", 0),
+        title=item.get("title"),
+        poster_path=item.get("poster_path"),
+        release_date=item.get("release_date"),
+        vote_average=item.get("vote_average"),
+        overview=(item.get("overview") or "")[:500] or None,
+    )
+
+
+def _item_to_tv_card(item: dict[str, Any]) -> TVCard:
+    return TVCard(
+        id=item.get("id", 0),
+        name=item.get("name"),
+        poster_path=item.get("poster_path"),
+        first_air_date=item.get("first_air_date"),
+        vote_average=item.get("vote_average"),
+        overview=(item.get("overview") or "")[:500] or None,
+    )
+
+
+def _item_to_person_card(item: dict[str, Any]) -> PersonCard:
+    known_for_raw = item.get("known_for") or []
+    known_for = []
+    for k in known_for_raw:
+        if isinstance(k, dict):
+            known_for.append(k.get("title") or k.get("name") or "")
+        elif isinstance(k, str):
+            known_for.append(k)
+    bio = item.get("biography") or ""
+    return PersonCard(
+        id=item.get("id", 0),
+        name=item.get("name"),
+        profile_path=item.get("profile_path"),
+        known_for_department=item.get("known_for_department"),
+        known_for=[t for t in known_for if t][:10],
+        biography=bio[:500] if bio else None,
+    )
+
+
+def _parse_tool_content_to_cards(content: str) -> list[Card]:
+    """Parse MCP tool JSON output into a list of Card models. Skips errors and non-list responses."""
+    cards: list[Card] = []
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        return cards
+    if not isinstance(data, dict):
+        return cards
+    if "error" in data:
+        return cards
+    seen: set[tuple[str, int]] = set()
+
+    def add_movie(item: dict[str, Any]) -> None:
+        if not isinstance(item, dict) or not item.get("id"):
+            return
+        key = ("movie", item["id"])
+        if key in seen:
+            return
+        seen.add(key)
+        cards.append(_item_to_movie_card(item))
+
+    def add_tv(item: dict[str, Any]) -> None:
+        if not isinstance(item, dict) or not item.get("id"):
+            return
+        key = ("tv", item["id"])
+        if key in seen:
+            return
+        seen.add(key)
+        cards.append(_item_to_tv_card(item))
+
+    def add_person(item: dict[str, Any]) -> None:
+        if not isinstance(item, dict) or not item.get("id"):
+            return
+        key = ("person", item["id"])
+        if key in seen:
+            return
+        seen.add(key)
+        cards.append(_item_to_person_card(item))
+
+    results = data.get("results")
+    if isinstance(results, list):
+        for r in results:
+            if not isinstance(r, dict):
+                continue
+            if "title" in r and "release_date" in r:
+                add_movie(r)
+            elif "name" in r and ("first_air_date" in r or "original_name" in r):
+                add_tv(r)
+            elif "name" in r and ("known_for_department" in r or "profile_path" in r or "known_for" in r):
+                add_person(r)
+            elif "media_type" in r:
+                if r.get("media_type") == "movie":
+                    add_movie(r)
+                elif r.get("media_type") == "tv":
+                    add_tv(r)
+                elif r.get("media_type") == "person":
+                    add_person(r)
+            else:
+                if "title" in r:
+                    add_movie(r)
+                elif "first_air_date" in r:
+                    add_tv(r)
+                else:
+                    add_person(r)
+        return cards
+    # Single object (e.g. get_movie_details)
+    if "title" in data and "release_date" in data:
+        add_movie(data)
+    elif "name" in data and ("first_air_date" in data or "original_name" in data):
+        add_tv(data)
+    elif "name" in data and ("known_for_department" in data or "biography" in data):
+        add_person(data)
+    return cards
+
+
+def _message_content_to_text(content: Any) -> str:
+    """Safely get a string from message content (string or list of content blocks)."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        first = content[0] if content else None
+        if first is None:
+            return ""
+        if isinstance(first, dict):
+            return first.get("text", "") or ""
+        if isinstance(first, str):
+            return first
+        return ""
+    return ""
+
+
+def extract_cards_from_agent_result(messages: list[Any]) -> list[Card]:
+    """Collect all cards from tool results in the agent message list."""
+    out: list[Card] = []
+    seen: set[tuple[str, int]] = set()
+    for m in messages:
+        if not isinstance(m, ToolMessage):
+            continue
+        raw = _message_content_to_text(m.content)
+        if not raw:
+            continue
+        for card in _parse_tool_content_to_cards(raw):
+            key = (card.type, card.id)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(card)
+    return out
+
+
 class ChatResponse(BaseModel):
     response: str
     reply_found: bool = True
+    cards: list[MovieCard | TVCard | PersonCard] = Field(default_factory=list, description="Structured cards for inline rendering")
 
 
 # System prompt: full tool map so the agent knows when to use each TMDB tool.
@@ -229,6 +444,101 @@ def create_app(lifespan_fn=None):
             raise HTTPException(status_code=503, detail="Agent not ready")
         return {"status": "ok"}
 
+    @app.get("/configuration")
+    async def get_config(request: Request):
+        """TMDb API configuration (image base URLs) for building poster/photo URLs."""
+        try:
+            config = tmdb_client.get_configuration()
+        except RuntimeError as e:
+            if "TMDB_API_KEY" in str(e):
+                raise HTTPException(status_code=503, detail="TMDb not configured")
+            raise HTTPException(status_code=502, detail="Configuration unavailable")
+        except TmdbClientError as e:
+            logger.warning("Configuration request failed: %s", e)
+            raise HTTPException(status_code=502, detail="Configuration unavailable")
+        except Exception:
+            logger.exception("Configuration request failed")
+            raise HTTPException(status_code=502, detail="Configuration unavailable")
+        return config
+
+    @app.get("/discovery/movies/popular")
+    async def discovery_movies_popular(page: int = 1, language: str = "en-US"):
+        """Currently popular movies — for discovery section."""
+        _validate_discovery_params(page, language)
+        try:
+            data = tmdb_client.get_movie_popular(page=page, language=language)
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="TMDb not configured")
+        except TmdbClientError as e:
+            logger.warning("Discovery movies/popular failed: %s", e)
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        except Exception:
+            logger.exception("Discovery movies/popular failed")
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        results = data.get("results") or []
+        cards = [_item_to_movie_card(r) for r in results if isinstance(r, dict) and r.get("id")]
+        return {"results": cards, "page": data.get("page", 1), "total_pages": data.get("total_pages", 0), "total_results": data.get("total_results", 0)}
+
+    @app.get("/discovery/movies/now-playing")
+    async def discovery_movies_now_playing(page: int = 1, language: str = "en-US"):
+        """Movies now playing in theatres — for discovery section."""
+        _validate_discovery_params(page, language)
+        try:
+            data = tmdb_client.get_movie_now_playing(page=page, language=language)
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="TMDb not configured")
+        except TmdbClientError as e:
+            logger.warning("Discovery movies/now-playing failed: %s", e)
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        except Exception:
+            logger.exception("Discovery movies/now-playing failed")
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        results = data.get("results") or []
+        cards = [_item_to_movie_card(r) for r in results if isinstance(r, dict) and r.get("id")]
+        return {"results": cards, "page": data.get("page", 1), "total_pages": data.get("total_pages", 0), "total_results": data.get("total_results", 0)}
+
+    @app.get("/discovery/tv/popular")
+    async def discovery_tv_popular(page: int = 1, language: str = "en-US"):
+        """Popular TV series — for discovery section."""
+        _validate_discovery_params(page, language)
+        try:
+            data = tmdb_client.get_tv_popular(page=page, language=language)
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="TMDb not configured")
+        except TmdbClientError as e:
+            logger.warning("Discovery tv/popular failed: %s", e)
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        except Exception:
+            logger.exception("Discovery tv/popular failed")
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        results = data.get("results") or []
+        cards = [_item_to_tv_card(r) for r in results if isinstance(r, dict) and r.get("id")]
+        return {"results": cards, "page": data.get("page", 1), "total_pages": data.get("total_pages", 0), "total_results": data.get("total_results", 0)}
+
+    @app.get("/discovery/people/trending")
+    async def discovery_people_trending(time_window: str = "day", page: int = 1):
+        """Trending people (actors, etc.) — for discovery section. time_window: day | week."""
+        tw = (time_window or "day").strip().lower()
+        if tw not in DISCOVERY_TIME_WINDOWS:
+            raise HTTPException(
+                status_code=400,
+                detail="time_window must be 'day' or 'week'",
+            )
+        _validate_discovery_params(page, "")
+        try:
+            data = tmdb_client.get_trending_people(time_window=tw, page=page)
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="TMDb not configured")
+        except TmdbClientError as e:
+            logger.warning("Discovery people/trending failed: %s", e)
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        except Exception:
+            logger.exception("Discovery people/trending failed")
+            raise HTTPException(status_code=502, detail="Discovery unavailable")
+        results = data.get("results") or []
+        cards = [_item_to_person_card(r) for r in results if isinstance(r, dict) and r.get("id")]
+        return {"results": cards, "page": data.get("page", 1), "total_pages": data.get("total_pages", 0), "total_results": data.get("total_results", 0)}
+
     @app.post("/chat", response_model=ChatResponse)
     async def chat(body: ChatRequest, request: Request):
         logger.info("chat request body: %s", body)
@@ -243,16 +553,16 @@ def create_app(lifespan_fn=None):
         try:
             result = await agent.ainvoke({"messages": [HumanMessage(content=message)]})
             messages = result.get("messages") or []
+            cards = extract_cards_from_agent_result(messages)
             for m in reversed(messages):
                 if hasattr(m, "content") and m.content:
-                    text = m.content if isinstance(m.content, str) else (
-                        m.content[0].get("text", "") if isinstance(m.content, list) else ""
-                    )
+                    text = _message_content_to_text(m.content)
                     if text:
-                        return ChatResponse(response=text, reply_found=True)
+                        return ChatResponse(response=text, reply_found=True, cards=cards)
             return ChatResponse(
                 response="I couldn't generate a reply. Please try again.",
                 reply_found=False,
+                cards=cards,
             )
         except AnthropicAuthenticationError as e:
             logger.warning("Anthropic authentication failed: %s", e)

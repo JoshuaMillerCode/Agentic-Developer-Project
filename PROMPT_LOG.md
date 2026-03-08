@@ -282,3 +282,43 @@ Set default Anthropic model to `claude-sonnet-4-5` in backend/app.py; added opti
 Diagnosed /chat 500: root cause is Anthropic API 400 "Your credit balance is too low to access the Anthropic API" (billing/credits). Explained this is an account issue, not a code bug—user should go to Anthropic Plans & Billing to add credits. Added handling in backend/app.py so Anthropic BadRequestError returns 502 with a safe, user-friendly message ("The AI service could not process your request. Please try again later or check your API account.") instead of a generic 500. Logged this prompt and the previous (Sonnet 4.5 override) in PROMPT_LOG.md.
 
 ---
+
+### 2026-03-08 – Backend readiness for AI Movie Assistant frontend
+
+**Prompt:**  
+Is the backend ready to serve a frontend with this description? (Frontend — AI Movie Assistant: chat on top, result cards for movie/TV/actor, discovery section with Popular Movies, Now Playing, Popular TV, Trending Actors; all data through backend.)
+
+**Summary:**  
+Assessed backend against the frontend spec. Backend has /chat (ReAct agent + TMDB MCP) and /health, and CORS is configured for local frontends. Gaps: (1) /chat returns only plain text—no structured card payload for movie/TV/actor cards; (2) no REST endpoints for discovery (popular movies, now playing, popular TV, trending people), so the discovery section cannot be populated via the backend; (3) no exposed configuration/image base URL for building poster/photo URLs. Recommended adding discovery GET endpoints and either structured chat response with cards or a separate flow for card data.
+
+---
+
+### 2026-03-08 – Edit backend to support AI Movie Assistant frontend
+
+**Prompt:**  
+yes edit the backend so it can support a frontend like this
+
+**Summary:**  
+Extended the backend to support the AI Movie Assistant frontend. Added `backend/tmdb_client.py` (httpx-based TMDb client) and new endpoints: GET `/configuration` (image base URLs), GET `/discovery/movies/popular`, GET `/discovery/movies/now-playing`, GET `/discovery/tv/popular`, GET `/discovery/people/trending` returning normalized movie/TV/person card payloads. Extended POST `/chat` response with a `cards` array: card models (MovieCard, TVCard, PersonCard) and extraction from agent tool results (ToolMessage content parsed as JSON, results and single-object responses mapped to cards). Updated backend README and tests; all tests pass.
+
+---
+
+### 2026-03-08 – Code review of AI Movie Assistant backend
+
+**Prompt:**  
+/code-reviewer review the code that was just implement with the last prompt
+
+**Summary:**  
+Delegated to code-reviewer subagent. Review covered backend/tmdb_client.py and backend/app.py (cards, discovery, config). Findings: one critical (ToolMessage content could cause AttributeError), warnings (tmdb_client HTTP/network errors, discovery param validation, config error handling), and suggestions (docstrings, single-object TV branch, time_window validation, tests for config/discovery). Summarized the review for the user with severity levels and optional follow-ups.
+
+---
+
+### 2026-03-08 – Address code review and log prompts
+
+**Prompt:**  
+address this code review and fix the critical, warnings, and suggestions. after log the last few prompts /prompt-response-logging
+
+**Summary:**  
+Implemented all code review fixes: (1) Critical: added `_message_content_to_text()` to safely handle message content (string or list of dicts/blocks) and use it in `extract_cards_from_agent_result` and chat reply extraction. (2) Warnings: tmdb_client now raises `TmdbClientError` on httpx HTTPStatusError (including 429) and RequestError/TimeoutException; app catches it and returns 502 with clear logs. Discovery routes validate `page` (1–500) and `language` length (≤10) via `_validate_discovery_params()` and return 400 when invalid; people/trending validates `time_window` (day|week). (3) Suggestions: tmdb_client module docstring notes raw dict return vs MCP JSON string; single-object TV branch uses same condition as list path (`first_air_date` or `original_name`); docstring on `_item_to_movie_card`; added tests for GET /configuration (503 when key missing, 200 with mocked config) and GET /discovery (400 for invalid page/time_window, 200 with mocked data). All 15 tests pass. Logged the code-review and address-review prompts in PROMPT_LOG.md.
+
+---

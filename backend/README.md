@@ -1,6 +1,6 @@
 # LLM Agent Backend (Phase 3)
 
-Backend that connects to the **TMDB MCP Server**, loads its tools via LangChain MCP adapters, and runs a **ReAct agent** (LangGraph) to answer user questions. Exposes **`/chat`** for the frontend.
+Backend that connects to the **TMDB MCP Server**, loads its tools via LangChain MCP adapters, and runs a **ReAct agent** (LangGraph) to answer user questions. Exposes **`/chat`** (with structured cards), **discovery**, and **configuration** endpoints for the AI Movie Assistant frontend.
 
 ## Prerequisites
 
@@ -26,7 +26,12 @@ Server runs at **http://localhost:8000**. This is suitable for **local developme
 Endpoints:
 
 - **GET /health** — Returns 200 only when the agent is ready (use for load balancers). Returns 503 before startup completes.
-- **POST /chat** — Body `{"message": "your question"}` → `{"response": "...", "reply_found": true|false}`. `reply_found` is `false` when the agent could not produce a final text reply (e.g. only tool calls, no summary).
+- **GET /configuration** — TMDb API configuration (image base URLs, poster sizes) for building poster/photo URLs. Returns 503 if `TMDB_API_KEY` is not set.
+- **GET /discovery/movies/popular** — Popular movies. Query: `page`, `language`. Response: `{ results, page, total_pages, total_results }` with movie cards.
+- **GET /discovery/movies/now-playing** — Movies now in theatres. Query: `page`, `language`.
+- **GET /discovery/tv/popular** — Popular TV series. Query: `page`, `language`.
+- **GET /discovery/people/trending** — Trending people (actors). Query: `time_window` (day|week), `page`.
+- **POST /chat** — Body `{"message": "your question"}` → `{"response": "...", "reply_found": true|false, "cards": [...]}`. `cards` is an array of movie/TV/person card objects for inline rendering; `reply_found` is `false` when the agent could not produce a final text reply.
 
 ## LLM provider
 
@@ -52,8 +57,9 @@ See `backend/requirements.txt`: `langchain-mcp-adapters`, `langgraph`, `langchai
 
 | Path           | Purpose |
 |----------------|--------|
-| `app.py`       | FastAPI app, lifespan (MCP session + agent), `/health`, `/chat`. System prompt in `app.py` maps all MCP tools so the LLM knows when to use each; tools are discovered at startup from the MCP server, so any new tools added to the MCP server are automatically available after restart. |
-| `requirements.txt` | Backend Python deps. |
+| `app.py`       | FastAPI app, lifespan (MCP session + agent), `/health`, `/chat` (with card extraction), `/configuration`, `/discovery/*`. Card models and extraction from agent tool results. |
+| `tmdb_client.py` | Minimal TMDb HTTP client for discovery lists and configuration (no MCP). |
+| `requirements.txt` | Backend Python deps (includes `httpx`). |
 | `requirements-dev.txt` | Test deps (pytest). Install for running tests. |
 
 ## Tests
