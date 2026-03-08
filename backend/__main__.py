@@ -1,4 +1,15 @@
-"""Run the backend server: python -m backend (dev). For production use a process manager and env config."""
+"""Run the backend server.
+
+Usage: python -m backend (from project root, with venv active).
+
+Environment:
+  HOST   — Bind address (default: 0.0.0.0).
+  PORT   — Port (default: 8000).
+  RELOAD — Set to "true" for auto-reload during development (default: true).
+           For production, set RELOAD=false and use a process manager (e.g. gunicorn + uvicorn worker).
+
+The FastAPI app is backend.app:app.
+"""
 import os
 
 import uvicorn

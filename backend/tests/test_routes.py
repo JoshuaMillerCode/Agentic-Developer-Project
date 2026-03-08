@@ -124,3 +124,46 @@ class TestDiscovery:
         response = client_no_agent.get("/discovery/people/trending?time_window=month")
         assert response.status_code == 400
         assert "time_window" in (response.json().get("detail") or "")
+
+
+class TestMovieDetail:
+    """GET /movies/{movie_id} — movie show page"""
+
+    def test_movie_detail_returns_400_for_invalid_id(self, client_no_agent):
+        response = client_no_agent.get("/movies/0")
+        assert response.status_code == 400
+        assert "movie_id" in (response.json().get("detail") or "")
+
+    def test_movie_detail_returns_200_with_mocked_data(self, client_no_agent):
+        with patch("backend.app.tmdb_client.get_movie_details") as m_detail, patch(
+            "backend.app.tmdb_client.get_movie_credits"
+        ) as m_credits:
+            m_detail.return_value = {
+                "id": 123,
+                "title": "Test Movie",
+                "poster_path": "/x.jpg",
+                "release_date": "2024-06-01",
+                "vote_average": 7.5,
+                "overview": "A great film.",
+                "tagline": "Tagline here",
+                "genres": [{"id": 28, "name": "Action"}],
+                "runtime": 120,
+            }
+            m_credits.return_value = {
+                "cast": [
+                    {"id": 1, "name": "Actor One", "character": "Hero", "profile_path": "/p1.jpg"},
+                ],
+            }
+            response = client_no_agent.get("/movies/123")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["type"] == "movie"
+        assert data["id"] == 123
+        assert data["title"] == "Test Movie"
+        assert data["tagline"] == "Tagline here"
+        assert data["runtime"] == 120
+        assert len(data["genres"]) == 1
+        assert data["genres"][0]["name"] == "Action"
+        assert len(data["cast"]) == 1
+        assert data["cast"][0]["name"] == "Actor One"
+        assert data["cast"][0]["character"] == "Hero"

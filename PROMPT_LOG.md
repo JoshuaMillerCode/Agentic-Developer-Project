@@ -322,3 +322,141 @@ address this code review and fix the critical, warnings, and suggestions. after 
 Implemented all code review fixes: (1) Critical: added `_message_content_to_text()` to safely handle message content (string or list of dicts/blocks) and use it in `extract_cards_from_agent_result` and chat reply extraction. (2) Warnings: tmdb_client now raises `TmdbClientError` on httpx HTTPStatusError (including 429) and RequestError/TimeoutException; app catches it and returns 502 with clear logs. Discovery routes validate `page` (1–500) and `language` length (≤10) via `_validate_discovery_params()` and return 400 when invalid; people/trending validates `time_window` (day|week). (3) Suggestions: tmdb_client module docstring notes raw dict return vs MCP JSON string; single-object TV branch uses same condition as list path (`first_air_date` or `original_name`); docstring on `_item_to_movie_card`; added tests for GET /configuration (503 when key missing, 200 with mocked config) and GET /discovery (400 for invalid page/time_window, 200 with mocked data). All 15 tests pass. Logged the code-review and address-review prompts in PROMPT_LOG.md.
 
 ---
+
+### 2026-03-08 – Clarify frontend card display and AI-suggested cards
+
+**Prompt:**  
+so with these new changes, I the frontend will be able to display the cards of the movies, tv, and people? And also can It display cards of whatever the AI chat suggests? (e.g. "What are the best movies with Tom Hanks?" → response plus cards for those movies/people)
+
+**Summary:**  
+Confirmed yes on both: (1) Discovery endpoints and GET /configuration let the frontend show movie/TV/person cards in the discovery section and build image URLs. (2) POST /chat returns `response` plus `cards` derived from agent tool results, so the frontend can render the AI reply and inline cards for whatever movies/TV/people the agent’s tools returned (e.g. person search + movie credits → cards for those films). Cards are driven by tool output, not by parsing the AI text, and in practice align with what the AI describes.
+
+---
+
+### 2026-03-08 – Final code review: backend ready for frontend
+
+**Prompt:**  
+okay perfect. /code-reviewer do one more review and let me know if the backend is ready and I can start building the frontend.
+
+**Summary:**  
+Delegated to code-reviewer for final backend readiness review. Verdict: backend ready for building the AI Movie Assistant frontend. Checklist validated (chat with cards, discovery, configuration, validation, errors, no key leakage). No critical issues; optional improvements: reduce chat request-body logging, add 200 tests for other discovery routes. Presented checklist and verdict to the user.
+
+---
+
+### 2026-03-08 – Improve backend documentation
+
+**Prompt:**  
+/documentation-writer improve the documentation for the backend@backend
+
+**Summary:**  
+Delegated to documentation-writer subagent. Improved backend/README.md: full API reference (POST /chat request/response and card shapes, GET /configuration, GET /discovery/* with query params and response shapes, error response table), Frontend integration subsection (building image URLs from config, CORS, base URL, no API keys on client), and tightened Prerequisites, Quick start, and other sections. Expanded backend/__main__.py module docstring (usage, HOST/PORT/RELOAD env, app entry point).
+
+---
+
+### 2026-03-08 – Update PROJECT_MEMORY with backend work
+
+**Prompt:**  
+update the @.cursor/PROJECT_MEMORY.md with everything we've done here in the backend
+
+**Summary:**  
+Updated .cursor/PROJECT_MEMORY.md: repo layout to include tmdb_client.py, tests, and README note; rewrote Backend (Phase 3) section with endpoints, card models, validation, errors, card extraction, env, run, tests, and docs; added decision bullet on backend cards/discovery/validation; updated Key files (backend README) and Next session (Phase 4 frontend with chat + discovery rows).
+
+---
+
+### 2026-03-08 – Log last few unlogged prompts
+
+**Prompt:**  
+/prompt-response-logging log the last few prompts that haven't been logged
+
+**Summary:**  
+Appended five entries to PROMPT_LOG.md: (1) clarify frontend card display and AI-suggested cards, (2) final code review (backend ready for frontend), (3) documentation-writer backend docs improvement, (4) PROJECT_MEMORY update with backend work, (5) this prompt.
+
+---
+
+### 2026-03-08 – Fix empty cards for family movie night query
+
+**Prompt:**  
+User reported that for "What are some good picks for a fun family movie night?" the backend returns good response text but `cards: []` — they want cards for the titles the AI mentions.
+
+**Summary:**  
+Included discovery/trending/list tools in `TOOLS_FOR_CHAT_CARDS` (discover_movie, get_movie_popular, get_movie_top_rated, get_trending_*, get_tv_popular, etc.) so broad queries that use those tools produce candidate cards. The existing "mentioned in response" filter still limits returned cards to titles the AI actually names, so actor-specific queries stay correct and family-movie-night-style queries now get non-empty cards.
+
+---
+
+### 2026-03-08 – Phase 4 frontend: AI Movie Assistant (Next.js)
+
+**Prompt:**  
+Move onto Phase 4 from EXECUTION_PLAN.md. Build the frontend per the outline: Next.js, Tailwind, dark theme; AI chat hero at top; discovery section below with four scrollable rows. Use shared card components; all data via backend; no API keys on client.
+
+**Summary:**  
+Implemented the full Phase 4 frontend in `frontend/`: Next.js 14, Tailwind, API client and types, shared Movie/TV/Person card components, hero ChatSection (input + response + inline cards), DiscoverySection with four scrollable rows. Dark theme, responsive. Phase 4.1 and 4.2 marked done; user can run backend and frontend to verify end-to-end (4.3).
+
+---
+
+### 2026-03-08 – Backend and frontend support for movie show/detail page
+
+**Prompt:**  
+Can the backend support a show page for if a user clicks on a movie and goes to a page detailing that movie?
+
+**Summary:**  
+Backend: added `get_movie_details` and `get_movie_credits` in `tmdb_client.py`, and `GET /movies/{movie_id}` returning full movie info plus cast. Frontend: added `getMovieDetail` API call, `/movie/[id]` detail page (poster, title, year, runtime, genres, tagline, overview, cast grid), and wrapped movie cards in `Link` to `/movie/[id]` so clicks go to the show page.
+
+---
+
+### 2026-03-08 – Fix blurry actor/actress images and log missing prompts
+
+**Prompt:**  
+Actor and actress images are very blurry — can you fix that? After that, log the last few prompts that weren’t logged (/prompt-response-logging).
+
+**Summary:**  
+Updated `buildImageUrl` in `frontend/src/lib/api.ts` to prefer larger TMDb profile sizes (h632, then w300, then w185) instead of the first size in the list (often w45), so profile photos render sharply. Appended retroactive PROMPT_LOG entries for the movie show-page request and this prompt.
+
+---
+
+### 2026-03-08 – Movie-themed “thinking” loading indicator
+
+**Prompt:**  
+When the user asks the AI a question, there should be a clear indicator that it is currently thinking — a fun, movie-related loading animation.
+
+**Summary:**  
+Added a `ChatLoading` component with a scrolling film-strip animation (CSS keyframes) and “Searching the vault…” copy, shown below the hero input whenever `loading` is true in `ChatSection`. Wired the component into `ChatSection` and added film-strip keyframes in `globals.css` for a seamless loop. Accessible with `role="status"` and `aria-live="polite"`.
+
+---
+
+### 2026-03-08 – Filter content by country (e.g. US only)
+
+**Prompt:**  
+The user should be able to filter content by country. Like I only want US movies.
+
+**Summary:**  
+Implemented end-to-end country/region filtering. Backend: added optional region (ISO 3166-1 alpha-2) to tmdb_client and discovery routes for popular and now-playing movies, and to POST /chat; when region is set, the chat endpoint injects an instruction so the agent passes region to movie tools. MCP: added region parameter to discover_movie, get_movie_popular, and get_movie_now_playing. Frontend: added CountryFilter dropdown (All regions, US, GB, CA, AU, DE, FR, IN, JP, KR, etc.) in the header; region is passed to ChatSection and DiscoverySection so discovery rows and AI chat respect the selected country.
+
+---
+
+### 2026-03-08 – Creative name for frontend: Reel Recs
+
+**Prompt:**  
+Come up with a more creative name for the frontend.
+
+**Summary:**  
+Renamed the app to **Reel Recs** (film reel + recommendations). Updated browser title, homepage heading, tagline ("AI-powered movie & TV picks — ask in plain English"), back links on movie/TV/person detail pages, package.json description, and frontend README. Reel Recs is used consistently across the UI and docs.
+
+---
+
+### 2026-03-08 – Cards not populating per AI response (wrong cards shown)
+
+**Prompt:**  
+Some cards aren't populating per the AI response. (Screenshot: AI listed Rocky, Creed, etc., but UI showed two generic "Boxing" movies.)
+
+**Summary:**  
+Fixed backend card filtering so only titles actually mentioned in a title-like context (e.g. "Rocky (1976)") are shown. Added word-boundary and title-context checks so generic words like "boxing" in prose don't match the movie "Boxing". When no cards match, the API now returns no cards instead of falling back to unrelated tool results. Frontend display now aligns with the AI's listed recommendations.
+
+---
+
+### 2026-03-08 – Log frontend prompts and improve frontend docs
+
+**Prompt:**  
+/prompt-response-logging log the last few prompts that contributed directly to the frontend build. then improve the documentation for the frontend /documentation-writer
+
+**Summary:**  
+Logged two frontend-related prompts: (1) creative name for frontend (Reel Recs), (2) cards not populating per AI response (backend card-filter fix). Delegated to documentation-writer subagent to improve frontend documentation. Frontend README was expanded into a single entry point: overview (Reel Recs, stack), prerequisites, quick start with run order and ports, env table, project structure table, main features (chat, discovery, country filter, detail pages, loading animation), scripts, and backend relationship (CORS, endpoints, no keys on client). No other frontend docs exist; README is the primary doc.

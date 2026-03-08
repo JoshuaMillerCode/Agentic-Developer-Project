@@ -81,8 +81,8 @@ This document is the master plan to execute the **AI Builder Candidate Project: 
 
 | # | Task | Details | Done |
 |---|------|---------|------|
-| 4.1 | **Simple UI** | Build a minimal web app: input (e.g. text box), send button, and area to show agent responses. | ☐ |
-| 4.2 | **Call backend** | Frontend calls the agent backend API and displays returned text (or structured data). | ☐ |
+| 4.1 | **Simple UI** | Build a minimal web app: input (e.g. text box), send button, and area to show agent responses. | ☑ |
+| 4.2 | **Call backend** | Frontend calls the agent backend API and displays returned text (or structured data). | ☑ |
 | 4.3 | **End-to-end flow** | User question → backend → agent chooses tools → MCP Server → external API → response back to UI. Verify full path. | ☐ |
 
 ---

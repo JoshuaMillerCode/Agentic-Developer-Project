@@ -51,14 +51,20 @@ def get_configuration() -> dict[str, Any]:
     return _request("/configuration")
 
 
-def get_movie_popular(page: int = 1, language: str = "en-US") -> dict[str, Any]:
-    """Popular movies list."""
-    return _request("/movie/popular", {"page": page, "language": language})
+def get_movie_popular(page: int = 1, language: str = "en-US", region: str | None = None) -> dict[str, Any]:
+    """Popular movies list. region: optional ISO 3166-1 alpha-2 (e.g. US)."""
+    params: dict[str, Any] = {"page": page, "language": language}
+    if region and len(region.strip()) == 2:
+        params["region"] = region.strip().upper()
+    return _request("/movie/popular", params)
 
 
-def get_movie_now_playing(page: int = 1, language: str = "en-US") -> dict[str, Any]:
-    """Movies now playing in theatres."""
-    return _request("/movie/now_playing", {"page": page, "language": language})
+def get_movie_now_playing(page: int = 1, language: str = "en-US", region: str | None = None) -> dict[str, Any]:
+    """Movies now playing in theatres. region: optional ISO 3166-1 alpha-2 (e.g. US)."""
+    params: dict[str, Any] = {"page": page, "language": language}
+    if region and len(region.strip()) == 2:
+        params["region"] = region.strip().upper()
+    return _request("/movie/now_playing", params)
 
 
 def get_tv_popular(page: int = 1, language: str = "en-US") -> dict[str, Any]:
@@ -72,3 +78,52 @@ def get_trending_people(time_window: str = "day", page: int = 1) -> dict[str, An
     if tw not in ("day", "week"):
         tw = "day"
     return _request(f"/trending/person/{tw}", {"page": page})
+
+
+def get_movie_details(movie_id: int, language: str = "en-US") -> dict[str, Any]:
+    """Full movie details by TMDb movie ID (for show/detail page)."""
+    if movie_id < 1:
+        raise TmdbClientError("movie_id must be a positive integer")
+    return _request(f"/movie/{movie_id}", {"language": language})
+
+
+def get_movie_credits(movie_id: int) -> dict[str, Any]:
+    """Cast and crew for a movie by TMDb movie ID."""
+    if movie_id < 1:
+        raise TmdbClientError("movie_id must be a positive integer")
+    return _request(f"/movie/{movie_id}/credits")
+
+
+def get_person_details(person_id: int, language: str = "en-US") -> dict[str, Any]:
+    """Full person details by TMDb person ID (for detail page)."""
+    if person_id < 1:
+        raise TmdbClientError("person_id must be a positive integer")
+    return _request(f"/person/{person_id}", {"language": language})
+
+
+def get_person_movie_credits(person_id: int) -> dict[str, Any]:
+    """Movie credits for a person by TMDb person ID."""
+    if person_id < 1:
+        raise TmdbClientError("person_id must be a positive integer")
+    return _request(f"/person/{person_id}/movie_credits")
+
+
+def get_person_tv_credits(person_id: int) -> dict[str, Any]:
+    """TV credits for a person by TMDb person ID."""
+    if person_id < 1:
+        raise TmdbClientError("person_id must be a positive integer")
+    return _request(f"/person/{person_id}/tv_credits")
+
+
+def get_tv_details(tv_id: int, language: str = "en-US") -> dict[str, Any]:
+    """Full TV show details by TMDb TV ID (for detail page)."""
+    if tv_id < 1:
+        raise TmdbClientError("tv_id must be a positive integer")
+    return _request(f"/tv/{tv_id}", {"language": language})
+
+
+def get_tv_credits(tv_id: int) -> dict[str, Any]:
+    """Cast and crew for a TV show by TMDb TV ID."""
+    if tv_id < 1:
+        raise TmdbClientError("tv_id must be a positive integer")
+    return _request(f"/tv/{tv_id}/credits")

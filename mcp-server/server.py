@@ -45,8 +45,9 @@ def discover_movie(
     vote_average_lte: float | None = None,
     with_genres: str | None = None,
     year: int | None = None,
+    region: str | None = None,
 ) -> str:
-    """Discover movies with filters and sort. Use when the user wants to browse movies by genre, year, rating, popularity, etc."""
+    """Discover movies with filters and sort. Use when the user wants to browse movies by genre, year, rating, popularity, or country. region: optional 2-letter ISO country code (e.g. US) to filter by country."""
     return tmdb_tools.discover_movie(
         sort_by=sort_by,
         page=page,
@@ -56,6 +57,7 @@ def discover_movie(
         vote_average_lte=vote_average_lte,
         with_genres=with_genres,
         year=year,
+        region=region,
     )
 
 
@@ -94,15 +96,15 @@ def get_trending_tv(time_window: str = "day") -> str:
 
 # Movie Lists
 @mcp.tool()
-def get_movie_now_playing(page: int = 1, language: str = "en-US") -> str:
-    """Get movies currently in theatres. Use when the user asks what's in cinemas or now playing."""
-    return tmdb_tools.get_movie_now_playing(page, language)
+def get_movie_now_playing(page: int = 1, language: str = "en-US", region: str | None = None) -> str:
+    """Get movies currently in theatres. region: optional 2-letter ISO country code (e.g. US) to filter by country. Use when the user asks what's in cinemas or now playing."""
+    return tmdb_tools.get_movie_now_playing(page, language, region)
 
 
 @mcp.tool()
-def get_movie_popular(page: int = 1, language: str = "en-US") -> str:
-    """Get popular movies. Use when the user asks for popular or trending movies (list form)."""
-    return tmdb_tools.get_movie_popular(page, language)
+def get_movie_popular(page: int = 1, language: str = "en-US", region: str | None = None) -> str:
+    """Get popular movies. region: optional 2-letter ISO country code (e.g. US). Use when the user asks for popular or trending movies (list form)."""
+    return tmdb_tools.get_movie_popular(page, language, region)
 
 
 @mcp.tool()

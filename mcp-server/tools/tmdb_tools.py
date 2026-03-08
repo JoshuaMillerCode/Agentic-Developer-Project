@@ -105,8 +105,18 @@ def _validate_language(language: str) -> str | None:
     return None
 
 
-def _call_list(path: str, page: object = 1, language: str = "en-US") -> str:
-    """Call a list endpoint with page and language. Validates both; returns JSON error string on failure."""
+def _validate_region(region: str | None) -> str | None:
+    """Return 2-letter uppercase region or None. Invalid format returns None (no error for optional param)."""
+    if not region or not isinstance(region, str):
+        return None
+    r = region.strip()
+    if len(r) != 2 or not r.isalpha():
+        return None
+    return r.upper()
+
+
+def _call_list(path: str, page: object = 1, language: str = "en-US", region: str | None = None) -> str:
+    """Call a list endpoint with page, language, and optional region. Validates; returns JSON error string on failure."""
     p, err = _coerce_page(page)
     if err:
         return json.dumps({"error": "validation_error", "detail": err})
@@ -114,7 +124,10 @@ def _call_list(path: str, page: object = 1, language: str = "en-US") -> str:
     err = _validate_language(lang)
     if err:
         return json.dumps({"error": "validation_error", "detail": err})
-    return _call(path, {"page": p, "language": lang})
+    params: dict = {"page": p, "language": lang}
+    if region:
+        params["region"] = region
+    return _call(path, params)
 
 
 def get_configuration() -> str:
@@ -147,8 +160,9 @@ def discover_movie(
     vote_average_lte: float | None = None,
     with_genres: str | None = None,
     year: int | None = None,
+    region: str | None = None,
 ) -> str:
-    """Discover movies with filters and sort. sort_by: popularity.desc, popularity.asc, primary_release_date.desc, vote_average.desc, vote_count.desc. with_genres: comma-separated genre IDs."""
+    """Discover movies with filters and sort. sort_by: popularity.desc, popularity.asc, primary_release_date.desc, vote_average.desc, vote_count.desc. with_genres: comma-separated genre IDs. region: optional ISO 3166-1 alpha-2 (e.g. US) to filter by country."""
     sort_by = (sort_by or "").strip().lower()
     if sort_by not in DISCOVER_SORT_OPTIONS:
         return json.dumps({
@@ -212,6 +226,9 @@ def discover_movie(
         params["with_genres"] = with_genres
     if year is not None:
         params["year"] = year
+    region_val = _validate_region(region)
+    if region_val:
+        params["region"] = region_val
     return _call("/discover/movie", params)
 
 
@@ -268,14 +285,16 @@ def get_trending_tv(time_window: str = "day") -> str:
 # ---------------------------------------------------------------------------
 
 
-def get_movie_now_playing(page: int = 1, language: str = "en-US") -> str:
-    """Get list of movies currently in theatres."""
-    return _call_list("/movie/now_playing", page, language)
+def get_movie_now_playing(page: int = 1, language: str = "en-US", region: str | None = None) -> str:
+    """Get list of movies currently in theatres. region: optional ISO 3166-1 alpha-2 (e.g. US)."""
+    region_val = _validate_region(region)
+    return _call_list("/movie/now_playing", page, language, region_val)
 
 
-def get_movie_popular(page: int = 1, language: str = "en-US") -> str:
-    """Get list of popular movies."""
-    return _call_list("/movie/popular", page, language)
+def get_movie_popular(page: int = 1, language: str = "en-US", region: str | None = None) -> str:
+    """Get list of popular movies. region: optional ISO 3166-1 alpha-2 (e.g. US)."""
+    region_val = _validate_region(region)
+    return _call_list("/movie/popular", page, language, region_val)
 
 
 def get_movie_top_rated(page: int = 1, language: str = "en-US") -> str:
