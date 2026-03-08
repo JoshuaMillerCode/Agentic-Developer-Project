@@ -222,3 +222,63 @@ I want to add more tools to the MCP server. I want tools for all of the route ca
 Cross-referenced the TMDB API reference with the existing 8 MCP tools and added 22 new tools. Implemented: Movie Lists (get_movie_now_playing, get_movie_popular, get_movie_top_rated, get_movie_upcoming); Trending (get_trending_all, get_trending_people); TV Series Lists (get_tv_airing_today, get_tv_on_the_air, get_tv_popular, get_tv_top_rated); TV Seasons (get_tv_season_details) and TV Episodes (get_tv_episode_details); get_tv_credits; Search (search_person, search_multi); People (get_person_details, get_person_movie_credits, get_person_tv_credits); Movies (get_movie_credits). All tools live in mcp-server/tools/tmdb_tools.py with validation and error handling; server.py registers all 30 tools. Updated mcp-server/README.md with full tools table, added validation tests for new tools, and appended this entry to PROMPT_LOG.md.
 
 ---
+
+### 2025-03-08 – Backend tool map for all MCP tools (Anthropic agent)
+
+**Prompt:**  
+I have added more tools to the MCP server, make sure the backend accounts for these, and also make sure that ALL the tools are mapped out clearly so the anthropic agent knows how to use them. /prompt-response-logging
+
+**Summary:**  
+Backend already discovers all tools at startup via load_mcp_tools(session), so no code change was needed to "account" for new tools. Updated the system prompt in backend/app.py to map all 30 MCP tools clearly: Configuration; Search (search_movie, search_tv, search_person, search_multi); Discover and movie lists (discover_movie, get_movie_now_playing, get_movie_popular, get_movie_top_rated, get_movie_upcoming); Trending (get_trending_movies, get_trending_tv, get_trending_all, get_trending_people); TV lists (get_tv_airing_today, get_tv_on_the_air, get_tv_popular, get_tv_top_rated); Movie/TV details and credits; People (get_person_details, get_person_movie_credits, get_person_tv_credits); and workflow tips (search then details/credits). Backend README note added that tools are discovered from MCP and the prompt maps them.
+
+---
+
+### 2025-03-08 – Code review backend for production readiness
+
+**Prompt:**  
+/code-reviewer review the backend code make sure that it is production ready for the frontend implementation.
+
+**Summary:**  
+Delegated to code-reviewer subagent. Review identified critical issues (CORS allow_origins=["*"] with allow_credentials=True invalid/insecure; 500 responses exposing str(e); no LLM/agent timeout; unbounded ChatRequest.message), warnings (MCP script path validation and optional env override; TMDB_API_KEY not validated at startup; __main__.py hardcoded dev settings; no reply_found flag for frontend), and suggestions (consistent error shape; /health assert agent ready; non-sensitive request logging; document langchain-anthropic). Verdict: not production-ready until the four critical items were fixed.
+
+---
+
+### 2025-03-08 – Address code review: critical, warnings, suggestions
+
+**Prompt:**  
+Address the code review above and implement the critical, warning, and suggestions. /prompt-response-logging log this prompt and the last.
+
+**Summary:**  
+Implemented all critical, warning, and suggestion items. Critical: CORS from env (CORS_ORIGINS, CORS_ALLOW_CREDENTIALS) with safe fallback; generic 500 message and logger.exception (no str(e) in response); LLM timeout and max_retries on ChatOpenAI/ChatAnthropic (LLM_TIMEOUT_SECONDS); ChatRequest.message Field(min_length=1, max_length=32_000). Warnings: MCP_SERVER_SCRIPT env and path resolution; TMDB_API_KEY startup warning; __main__.py host/port/reload from env, README production note; ChatResponse.reply_found for no-reply case. Suggestions: /health returns 503 when agent not ready; request logging middleware (method, path, status, duration); optional langchain-anthropic in requirements and .env.example backend overrides. README updated with CORS, production config, and logging. Backend is production-ready for frontend implementation. Logged the code-review prompt and this prompt in PROMPT_LOG.md.
+
+---
+
+### 2025-03-08 – Backend route tests and run
+
+**Prompt:**  
+write test for the routes in the backend and then run them
+
+**Summary:**  
+Added backend route tests: refactored app into `create_app(lifespan_fn=None)` for testability; created `backend/tests/conftest.py` with test lifespans (no agent, mock agent, mock agent no reply) and fixtures; `backend/tests/test_routes.py` with 10 tests for GET /health (503 when agent not ready, 200 when ready) and POST /chat (422/400 for invalid body or message, 503 when no agent, 200 with mock reply and reply_found, 422 for message over max length). Added `backend/requirements-dev.txt` (pytest) and Tests section in README. Ran `python -m pytest backend/tests -v` — all 10 tests passed.
+
+---
+
+### 2026-03-08 – Set Anthropic model override to Sonnet 4.5
+
+**Prompt:**  
+set the override to use sonnet 4.5
+
+**Summary:**  
+Set default Anthropic model to `claude-sonnet-4-5` in backend/app.py; added optional override in .env.example (ANTHROPIC_MODEL=claude-sonnet-4-5) and updated backend/README.md to document the new default.
+
+---
+
+### 2026-03-08 – Debug /chat error: Anthropic credit balance
+
+**Prompt:**  
+/debugger Im getting an error when hitting the /chat route in the backend. (error traceback provided) /prompt-response-logging
+
+**Summary:**  
+Diagnosed /chat 500: root cause is Anthropic API 400 "Your credit balance is too low to access the Anthropic API" (billing/credits). Explained this is an account issue, not a code bug—user should go to Anthropic Plans & Billing to add credits. Added handling in backend/app.py so Anthropic BadRequestError returns 502 with a safe, user-friendly message ("The AI service could not process your request. Please try again later or check your API account.") instead of a generic 500. Logged this prompt and the previous (Sonnet 4.5 override) in PROMPT_LOG.md.
+
+---
