@@ -5,12 +5,10 @@ import { getConfiguration } from "@/lib/api";
 import type { TmdbConfig } from "@/lib/types";
 import { ChatSection } from "@/components/chat";
 import { DiscoverySection } from "@/components/discovery";
-import { CountryFilter } from "@/components/discovery/CountryFilter";
 
 export default function Home() {
   const [config, setConfig] = useState<TmdbConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [region, setRegion] = useState<string>("");
 
   useEffect(() => {
     getConfiguration()
@@ -29,13 +27,6 @@ export default function Home() {
           <p className="mt-2 text-gray-400 text-sm sm:text-base">
             AI-powered movie & TV picks — ask in plain English.
           </p>
-          <div className="mt-4 flex justify-center">
-            <CountryFilter
-              value={region}
-              onChange={setRegion}
-              className="inline-block"
-            />
-          </div>
         </div>
       </header>
 
@@ -45,10 +36,10 @@ export default function Home() {
         </div>
       )}
 
-      <ChatSection config={config} region={region || undefined} />
+      <ChatSection config={config} />
 
       {/* Discovery sections below */}
-      <DiscoverySection config={config} region={region || undefined} />
+      <DiscoverySection config={config} />
     </main>
   );
 }

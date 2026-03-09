@@ -30,6 +30,23 @@ Server runs at **http://localhost:8000** (suitable for local development). For p
 
 ## API reference
 
+### Routes overview
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check; 200 when agent is ready, 503 before startup. |
+| GET | `/configuration` | TMDb API configuration (image base URLs) for building poster/profile URLs. |
+| GET | `/discovery/movies/popular` | Paginated list of currently popular movies. |
+| GET | `/discovery/movies/now-playing` | Paginated list of movies now playing in theatres. |
+| GET | `/discovery/tv/popular` | Paginated list of popular TV series. |
+| GET | `/discovery/people/trending` | Paginated list of trending people (actors, etc.). |
+| GET | `/movies/{movie_id}` | Movie detail: full info and cast. |
+| GET | `/people/{person_id}` | Person detail: full info, biography, movie/TV credits. |
+| GET | `/tv/{tv_id}` | TV show detail: full info and cast. |
+| POST | `/chat` | Send a message; returns agent reply and optional cards (movie/TV/person). |
+
+---
+
 ### POST /chat
 
 Accepts a single user message and returns the agent’s text reply plus optional **cards** (movie, TV, or person) derived from agent tool results. Cards can be empty if the agent did not return structured data.
@@ -39,6 +56,7 @@ Accepts a single user message and returns the agent’s text reply plus optional
 | Field     | Type   | Required | Constraints |
 |----------|--------|----------|-------------|
 | `message` | string | yes      | 1–32000 characters |
+| `region`  | string | no       | Optional 2-letter ISO 3166-1 country code (e.g. `US`) to filter discovery content in the agent’s context. |
 
 Example:
 
@@ -125,6 +143,7 @@ Paginated discovery lists: popular movies, now-playing movies, or popular TV ser
 |------------|--------|----------|-------------|
 | `page`     | int    | 1        | Page number, 1–500. |
 | `language` | string | `en-US`  | Language code, max 10 characters. |
+| `region`   | string | —        | Optional. 2-letter ISO 3166-1 country code (e.g. `US`, `GB`) to regionalize results. Applies only to the two movie endpoints (`/discovery/movies/popular`, `/discovery/movies/now-playing`). |
 
 **Response**
 
@@ -164,11 +183,133 @@ Trending people (actors, etc.). This endpoint does **not** support a `language` 
 
 ---
 
+### GET /movies/{movie_id}
+
+Movie detail (show) page: full movie info plus cast. Used when the user clicks a movie card.
+
+**Path parameters**
+
+| Parameter   | Type | Description |
+|-------------|------|-------------|
+| `movie_id`  | int  | TMDb movie ID (positive integer). |
+
+**Query parameters**
+
+| Parameter  | Type   | Default  | Description |
+|------------|--------|----------|-------------|
+| `language` | string | `en-US`  | Language code, max 10 characters. |
+
+**Response** — `MovieDetailResponse`: card fields plus tagline, genres, runtime, and cast.
+
+| Field          | Type    | Description |
+|----------------|---------|-------------|
+| `type`         | string  | `"movie"`. |
+| `id`           | int     | TMDb movie ID. |
+| `title`        | string  | Movie title (may be null). |
+| `poster_path`  | string  | Poster path for image URL (may be null). |
+| `release_date` | string  | Release date (may be null). |
+| `vote_average` | float   | Average rating (may be null). |
+| `overview`     | string  | Synopsis (may be null). |
+| `tagline`      | string  | Tagline (may be null). |
+| `genres`       | array   | List of genre objects. |
+| `runtime`      | int     | Runtime in minutes (may be null). |
+| `cast`         | array   | Cast members (see below). |
+
+Each **cast** item: `id` (int), `name` (string), `character` (string), `profile_path` (string). All cast fields may be null except `id`.
+
+**Errors**
+
+- **400** — `movie_id` not a positive integer, or `language` longer than 10 characters.
+- **502** — TMDb/upstream failure (e.g. movie not found or network error).
+- **503** — TMDb not configured (`TMDB_API_KEY` not set).
+
+---
+
+### GET /people/{person_id}
+
+Person detail page: full person info, biography, and movie/TV credits.
+
+**Path parameters**
+
+| Parameter   | Type | Description |
+|-------------|------|-------------|
+| `person_id` | int  | TMDb person ID (positive integer). |
+
+**Query parameters**
+
+| Parameter  | Type   | Default  | Description |
+|------------|--------|----------|-------------|
+| `language` | string | `en-US`  | Language code, max 10 characters. |
+
+**Response** — `PersonDetailResponse`.
+
+| Field                   | Type   | Description |
+|-------------------------|--------|-------------|
+| `type`                  | string | `"person"`. |
+| `id`                    | int    | TMDb person ID. |
+| `name`                  | string | Person name (may be null). |
+| `profile_path`          | string | Profile photo path (may be null). |
+| `known_for_department`  | string | e.g. Acting (may be null). |
+| `known_for`             | array  | List of strings (titles). |
+| `biography`             | string | Biography text (may be null). |
+| `birthday`              | string | Birth date (may be null). |
+| `place_of_birth`        | string | Place of birth (may be null). |
+| `movie_credits`         | array  | List of movie credit objects (id, title, release_date, character). |
+| `tv_credits`            | array  | List of TV credit objects (id, name, first_air_date, character). |
+
+**Errors**
+
+- **400** — `person_id` not a positive integer, or `language` longer than 10 characters.
+- **502** — TMDb/upstream failure.
+- **503** — TMDb not configured.
+
+---
+
+### GET /tv/{tv_id}
+
+TV show detail page: full show info plus cast.
+
+**Path parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tv_id`   | int  | TMDb TV show ID (positive integer). |
+
+**Query parameters**
+
+| Parameter  | Type   | Default  | Description |
+|------------|--------|----------|-------------|
+| `language` | string | `en-US`  | Language code, max 10 characters. |
+
+**Response** — `TvDetailResponse`: card fields plus tagline, genres, number of seasons, and cast.
+
+| Field              | Type   | Description |
+|--------------------|--------|-------------|
+| `type`             | string | `"tv"`. |
+| `id`               | int    | TMDb TV show ID. |
+| `name`             | string | Show name (may be null). |
+| `poster_path`      | string | Poster path (may be null). |
+| `first_air_date`   | string | First air date (may be null). |
+| `vote_average`     | float  | Average rating (may be null). |
+| `overview`         | string | Synopsis (may be null). |
+| `tagline`          | string | Tagline (may be null). |
+| `genres`           | array  | List of genre objects. |
+| `number_of_seasons`| int    | Number of seasons (may be null). |
+| `cast`             | array  | Cast members: `id`, `name`, `character`, `profile_path` (same shape as movie cast). |
+
+**Errors**
+
+- **400** — `tv_id` not a positive integer, or `language` longer than 10 characters.
+- **502** — TMDb/upstream failure.
+- **503** — TMDb not configured.
+
+---
+
 ### Error responses (all endpoints)
 
 | Code | Meaning |
 |------|--------|
-| **400** | Validation: invalid `page`, `language`, `time_window`, or `message` (e.g. empty or over length). |
+| **400** | Validation: invalid `page`, `language`, `time_window`, `region` (e.g. not a 2-letter code), or `message` (e.g. empty or over length). |
 | **401** | Invalid LLM API key (e.g. `ANTHROPIC_API_KEY`). Returned only by `/chat`. |
 | **502** | Upstream failure: TMDb API/network error or LLM service error (e.g. billing). |
 | **503** | Service not ready: agent not initialized, or TMDb not configured (`TMDB_API_KEY` not set). |
@@ -212,8 +353,8 @@ See `backend/requirements.txt`: `langchain-mcp-adapters`, `langgraph`, `langchai
 
 | Path             | Purpose |
 |------------------|--------|
-| `app.py`         | FastAPI app, lifespan (MCP session + agent), routes: `/health`, `/chat` (with card extraction), `/configuration`, `/discovery/*`. Card models and extraction from agent tool results. |
-| `tmdb_client.py` | Minimal TMDb HTTP client for discovery lists and configuration (no MCP). |
+| `app.py`         | FastAPI app, lifespan (MCP session + agent), routes: `/health`, `/chat` (with card extraction), `/configuration`, `/discovery/*` (movies/popular, movies/now-playing, tv/popular, people/trending), and detail routes `GET /movies/{movie_id}`, `GET /people/{person_id}`, `GET /tv/{tv_id}`. Card and detail response models; card extraction from agent tool results. |
+| `tmdb_client.py` | Minimal TMDb HTTP client for discovery lists, configuration, and detail/credits (no MCP). |
 | `requirements.txt`   | Backend Python deps (includes `httpx`). |
 | `requirements-dev.txt` | Test deps (pytest). Install for running tests. |
 

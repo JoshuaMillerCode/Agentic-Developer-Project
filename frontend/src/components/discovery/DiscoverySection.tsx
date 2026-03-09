@@ -20,10 +20,8 @@ type RowItem = Card;
 
 export function DiscoverySection({
   config,
-  region,
 }: {
   config: TmdbConfig | null;
-  region?: string | null;
 }) {
   const [popularMovies, setPopularMovies] = useState<MovieCardType[]>([]);
   const [nowPlaying, setNowPlaying] = useState<MovieCardType[]>([]);
@@ -37,8 +35,8 @@ export function DiscoverySection({
     setLoading(true);
     setError(null);
     Promise.all([
-      getDiscoveryMoviesPopular(1, "en-US", region).then((r) => r.results),
-      getDiscoveryMoviesNowPlaying(1, "en-US", region).then((r) => r.results),
+      getDiscoveryMoviesPopular(1, "en-US").then((r) => r.results),
+      getDiscoveryMoviesNowPlaying(1, "en-US").then((r) => r.results),
       getDiscoveryTvPopular(1).then((r) => r.results),
       getDiscoveryPeopleTrending("day", 1).then((r) => r.results),
     ])
@@ -59,7 +57,7 @@ export function DiscoverySection({
     return () => {
       cancelled = true;
     };
-  }, [region]);
+  }, []);
 
   if (loading) {
     return (

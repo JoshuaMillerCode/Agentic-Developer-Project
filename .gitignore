@@ -25,3 +25,6 @@ yarn-error.log*
 .vscode/
 *.swp
 .DS_Store
+
+# Personal / not for repo
+VIDEO_DEMO_OUTLINE.md

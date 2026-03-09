@@ -91,10 +91,10 @@ This document is the master plan to execute the **AI Builder Candidate Project: 
 
 | # | Task | Details | Done |
 |---|------|---------|------|
-| 5.1 | **README.md** | Clear instructions: env setup, how to get third-party and LLM API keys, how to start MCP Server, how to run backend and frontend. | ☐ |
-| 5.2 | **Code structure section** | In README, describe folders: frontend, LLM backend/agent, MCP Server wrapper. | ☐ |
-| 5.3 | **Dependencies** | requirements.txt and/or package.json with all libraries and versions. | ☐ |
-| 5.4 | **Documentation philosophy** | Brief note (for video/docs) on how a new or collaborating developer would onboard (README, env, architecture, key flows). | ☐ |
+| 5.1 | **README.md** | Clear instructions: env setup, how to get third-party and LLM API keys, how to start MCP Server, how to run backend and frontend. | ☑ |
+| 5.2 | **Code structure section** | In README, describe folders: frontend, LLM backend/agent, MCP Server wrapper. | ☑ |
+| 5.3 | **Dependencies** | requirements.txt and/or package.json with all libraries and versions. | ☑ |
+| 5.4 | **Documentation philosophy** | Brief note (for video/docs) on how a new or collaborating developer would onboard (README, env, architecture, key flows). | ☑ |
 
 ---
 

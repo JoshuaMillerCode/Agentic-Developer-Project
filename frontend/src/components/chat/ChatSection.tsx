@@ -5,6 +5,7 @@ import { postChat } from "@/lib/api";
 import type { Card, ChatResponse, TmdbConfig } from "@/lib/types";
 import { CardRenderer } from "@/components/cards";
 import { ChatLoading } from "./ChatLoading";
+import { MarkdownResponse } from "./MarkdownResponse";
 
 const PLACEHOLDER =
   "Ask me anything — first date movies, 90s thrillers, shows like Breaking Bad...";
@@ -35,10 +36,8 @@ function saveResponse(data: ChatResponse) {
 
 export function ChatSection({
   config,
-  region,
 }: {
   config: TmdbConfig | null;
-  region?: string | null;
 }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,7 +56,7 @@ export function ChatSection({
     setError(null);
     setLastResponse(null);
     try {
-      const res = await postChat(msg, region || undefined);
+      const res = await postChat(msg);
       setLastResponse(res);
       saveResponse(res);
       setInput("");
@@ -66,7 +65,7 @@ export function ChatSection({
     } finally {
       setLoading(false);
     }
-  }, [input, loading, region]);
+  }, [input, loading]);
 
   return (
     <section className="w-full max-w-4xl mx-auto px-4 pt-6 pb-8">
@@ -105,11 +104,7 @@ export function ChatSection({
       {/* Response + cards — smooth transition below input */}
       {lastResponse && (
         <div className="mt-8 animate-slide-up space-y-6">
-          <div className="prose prose-invert max-w-none">
-            <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">
-              {lastResponse.response}
-            </p>
-          </div>
+          <MarkdownResponse content={lastResponse.response} />
           {lastResponse.cards && lastResponse.cards.length > 0 && (
             <div className="flex flex-wrap gap-4 justify-start">
               {(lastResponse.cards as Card[]).map((card) => (

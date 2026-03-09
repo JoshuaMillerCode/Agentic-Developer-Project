@@ -460,3 +460,13 @@ Fixed backend card filtering so only titles actually mentioned in a title-like c
 
 **Summary:**  
 Logged two frontend-related prompts: (1) creative name for frontend (Reel Recs), (2) cards not populating per AI response (backend card-filter fix). Delegated to documentation-writer subagent to improve frontend documentation. Frontend README was expanded into a single entry point: overview (Reel Recs, stack), prerequisites, quick start with run order and ports, env table, project structure table, main features (chat, discovery, country filter, detail pages, loading animation), scripts, and backend relationship (CORS, endpoints, no keys on client). No other frontend docs exist; README is the primary doc.
+
+---
+
+### 2026-03-08 – Phase 5 documentation (docs folder, new developer onboarding)
+
+**Prompt:**  
+We are ready to start implementing phase 5 of the EXECUTION_PLAN.md. write to the docs folder the entire documentation for this project. include links to the frontend, backend, and mcp-server README.md files for specific's on those. this needs to be friendly for new developers so that they can easily set this up in there own environment. /prompt-response-logging
+
+**Summary:**  
+Implemented Phase 5 documentation: created full docs in `docs/` (README index, GETTING_STARTED, ARCHITECTURE, CODE_STRUCTURE, DEPENDENCIES, DOCUMENTATION_PHILOSOPHY) with links to frontend, backend, and mcp-server READMEs. Updated root README with quick start, env (TMDB + LLM keys), run order (backend then frontend), repo structure table, and links to docs and component READMEs. Marked Phase 5 tasks complete in EXECUTION_PLAN.md. New developers can use docs/GETTING_STARTED.md for setup and docs/ for architecture, structure, dependencies, and documentation philosophy.
